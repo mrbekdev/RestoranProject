@@ -31,10 +31,12 @@ model Product {
 }
 
 model Category {
-  id        Int       @id @default(autoincrement())
-  name      String
-  products  Product[]
-  createdAt DateTime  @default(now())
+  id          Int       @id @default(autoincrement())
+  name        String
+  image       String?
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
 }
 
 model Order {
