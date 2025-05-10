@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, NotFoundException, Put } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -8,7 +8,7 @@ import { extname } from 'path';
 
 @Controller('category')
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
+  constructor(private readonly categoryService: CategoryService) { }
 
   @Post()
   @UseInterceptors(
@@ -47,7 +47,7 @@ export class CategoryController {
     return this.categoryService.findOne(+id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
