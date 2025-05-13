@@ -30,6 +30,7 @@ export class ProductController {
       },
     }),
   )
+  
   async create(@Body() createProductDto: CreateProductDto, @UploadedFile() file: Express.Multer.File) {
     if (file) {
       createProductDto.image = `/uploads/products/${file.filename}`;

@@ -13,21 +13,20 @@ model User {
   surname   String
   username  String   @unique
   password  String
-  role      Role     @default(CUSTOMER) // Default user mijoz
+  role      Role     @default(CUSTOMER)
   Order     Order[]
   createdAt DateTime @default(now())
 }
 
 model Product {
-  id         Int       @id @default(autoincrement())
-  name       String
-  price      Decimal
-  image      String?
-  category   Category? @relation(fields: [categoryId], references: [id])
-  categoryId Int?
-  createdAt  DateTime  @default(now())
-  Order      Order?    @relation(fields: [orderId], references: [id])
-  orderId    Int?
+  id          Int         @id @default(autoincrement())
+  name        String
+  price       Decimal
+  image       String?
+  category    Category?   @relation(fields: [categoryId], references: [id])
+  categoryId  Int?
+  createdAt   DateTime    @default(now())
+  orderItems  OrderItem[]
 }
 
 model Category {
@@ -41,15 +40,23 @@ model Category {
 
 model Order {
   id          Int         @id @default(autoincrement())
-  productIds  Int[]
   tableNumber String
   status      OrderStatus @default(PENDING)
   totalPrice  Int
   user        User?       @relation(fields: [userId], references: [id])
   userId      Int?
   createdAt   DateTime    @default(now())
-  Product     Product[]
-  productId   Int?
+  orderItems  OrderItem[]
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   Int
+  product   Product  @relation(fields: [productId], references: [id])
+  productId Int
+  count     Int
+  createdAt DateTime @default(now())
 }
 
 enum Role {
@@ -59,8 +66,8 @@ enum Role {
 }
 
 enum OrderStatus {
-  PENDING // Yangi buyurtma
-  COOKING // Oshxonada tayyorlanmoqda
-  READY // Tayyor bo‘ldi
-  COMPLETED // Berildi va to'landi
+  PENDING
+  COOKING
+  READY
+  COMPLETED
 }
