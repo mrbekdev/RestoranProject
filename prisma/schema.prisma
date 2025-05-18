@@ -19,14 +19,15 @@ model User {
 }
 
 model Product {
-  id          Int         @id @default(autoincrement())
-  name        String
-  price       Decimal
-  image       String?
-  category    Category?   @relation(fields: [categoryId], references: [id])
-  categoryId  Int?
-  createdAt   DateTime    @default(now())
-  orderItems  OrderItem[]
+  id         Int         @id @default(autoincrement())
+  name       String
+  price      Decimal
+  image      String?
+  date String?
+  category   Category?   @relation(fields: [categoryId], references: [id])
+  categoryId Int?
+  createdAt  DateTime    @default(now())
+  orderItems OrderItem[]
 }
 
 model Category {

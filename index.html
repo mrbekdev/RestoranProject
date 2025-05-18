@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Management</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f4f4f4;
+    }
+    h2 {
+      color: #333;
+    }
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #response {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <!-- Order yaratish -->
+  <div class="section">
+    <h2>Create Order</h2>
+    <label for="createTableNumber">Table Number:</label>
+    <input type="text" id="createTableNumber" placeholder="e.g. 5">
+    
+    <label for="createStatus">Status:</label>
+    <select id="createStatus">
+      <option value="PENDING">PENDING</option>
+      <option value="COOKING">COOKING</option>
+      <option value="READY">READY</option>
+      <option value="COMPLETED">COMPLETED</option>
+    </select>
+    
+    <label for="createUserId">User ID:</label>
+    <input type="number" id="createUserId" placeholder="e.g. 1">
+    
+    <label for="createProducts">Products (JSON format: [{"productId":1,"count":2}, ...]):</label>
+    <textarea id="createProducts" rows="4" placeholder='e.g. [{"productId":1,"count":2},{"productId":2,"count":1}]'></textarea>
+    
+    <button onclick="createOrder()">Create Order</button>
+  </div>
+
+  <!-- Barcha orderlarni ko'rish -->
+  <div class="section">
+    <h2>Get All Orders</h2>
+    <button onclick="getAllOrders()">Get All Orders</button>
+  </div>
+
+  <!-- Bitta orderni ko'rish -->
+  <div class="section">
+    <h2>Get Order by ID</h2>
+    <label for="getOrderId">Order ID:</label>
+    <input type="number" id="getOrderId" placeholder="e.g. 1">
+    <button onclick="getOrderById()">Get Order</button>
+  </div>
+
+  <!-- Orderni yangilash -->
+  <div class="section">
+    <h2>Update Order</h2>
+    <label for="updateOrderId">Order ID:</label>
+    <input type="number" id="updateOrderId" placeholder="e.g. 1">
+    
+    <label for="updateTableNumber">Table Number (optional):</label>
+    <input type="text" id="updateTableNumber" placeholder="e.g. 5">
+    
+    <label for="updateStatus">Status (optional):</label>
+    <select id="updateStatus">
+      <option value="">Select status (optional)</option>
+      <option value="PENDING">PENDING</option>
+      <option value="COOKING">COOKING</option>
+      <option value="READY">READY</option>
+      <option value="COMPLETED">COMPLETED</option>
+    </select>
+    
+    <label for="updateUserId">User ID (optional):</label>
+    <input type="number" id="updateUserId" placeholder="e.g. 1">
+    
+    <label for="updateProducts">Products (JSON format, optional: [{"productId":1,"count":2}, ...]):</label>
+    <textarea id="updateProducts" rows="4" placeholder='e.g. [{"productId":1,"count":2},{"productId":2,"count":1}]'></textarea>
+    
+    <button onclick="updateOrder()">Update Order</button>
+  </div>
+
+  <!-- Orderni o'chirish -->
+  <div class="section">
+    <h2>Delete Order</h2>
+    <label for="deleteOrderId">Order ID:</label>
+    <input type="number" id="deleteOrderId" placeholder="e.g. 1">
+    <button onclick="deleteOrder()">Delete Order</button>
+  </div>
+
+  <!-- Natijalarni ko'rsatish -->
+  <div class="section">
+    <h2>Response</h2>
+    <div id="response"></div>
+  </div>
+
+  <script>
+    const API_URL = 'http://109.172.37.41:4000/order';
+
+    // JSON formatidagi xatolarni tekshirish uchun yordamchi funksiya
+    function parseJsonInput(input) {
+      try {
+        return JSON.parse(input);
+      } catch (error) {
+        throw new Error('Invalid JSON format: ' + error.message);
+      }
+    }
+
+    // Natijalarni ko'rsatish funksiyasi
+    function displayResponse(data) {
+      const responseDiv = document.getElementById('response');
+      responseDiv.textContent = JSON.stringify(data, null, 2);
+    }
+
+    // Order yaratish
+    async function createOrder() {
+      try {
+        const tableNumber = document.getElementById('createTableNumber').value;
+        const status = document.getElementById('createStatus').value;
+        const userId = Number(document.getElementById('createUserId').value);
+        const productsInput = document.getElementById('createProducts').value;
+        const products = parseJsonInput(productsInput);
+
+        const data = {
+          tableNumber,
+          status,
+          userId,
+          products,
+        };
+
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
+        console.log(result);
+        
+        if (!response.ok) throw new Error(JSON.stringify(result));
+        displayResponse(result);
+      } catch (error) {
+        displayResponse({ error: error.message });
+      }
+    }
+
+    // Barcha orderlarni olish
+    async function getAllOrders() {
+      try {
+        const response = await fetch(API_URL);
+        const result = await response.json();
+        console.log(result);
+        
+        if (!response.ok) throw new Error(JSON.stringify(result));
+        displayResponse(result);
+      } catch (error) {
+        displayResponse({ error: error.message });
+      }
+    }
+
+    // Bitta orderni olish
+    async function getOrderById() {
+      try {
+        const orderId = Number(document.getElementById('getOrderId').value);
+        const response = await fetch(`${API_URL}/${orderId}`);
+        const result = await response.json();
+        if (!response.ok) throw new Error(JSON.stringify(result));
+        displayResponse(result);
+      } catch (error) {
+        displayResponse({ error: error.message });
+      }
+    }
+
+    // Orderni yangilash
+    async function updateOrder() {
+      try {
+        const orderId = Number(document.getElementById('updateOrderId').value);
+        const tableNumber = document.getElementById('updateTableNumber').value;
+        const status = document.getElementById('updateStatus').value;
+        const userId = document.getElementById('updateUserId').value;
+        const productsInput = document.getElementById('updateProducts').value;
+
+        const data = {};
+        if (tableNumber) data.tableNumber = tableNumber;
+        if (status) data.status = status;
+        if (userId) data.userId = Number(userId);
+        if (productsInput) data.products = parseJsonInput(productsInput);
+
+        const response = await fetch(`${API_URL}/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(JSON.stringify(result));
+        displayResponse(result);
+      } catch (error) {
+        displayResponse({ error: error.message });
+      }
+    }
+
+    // Orderni o'chirish
+    async function deleteOrder() {
+      try {
+        const orderId = Number(document.getElementById('deleteOrderId').value);
+        const response = await fetch(`${API_URL}/${orderId}`, {
+          method: 'DELETE',
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(JSON.stringify(result));
+        displayResponse(result);
+      } catch (error) {
+        displayResponse({ error: error.message });
+      }
+    }
+  </script>
+</body>
+</html>

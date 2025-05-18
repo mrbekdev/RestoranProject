@@ -13,6 +13,9 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   image?: string;
+  @IsString()
+  @IsOptional()
+  date:string;
 
   @Transform(({ value }) => value ? parseInt(value, 10) : null)
   @IsOptional()

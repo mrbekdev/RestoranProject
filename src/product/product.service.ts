@@ -26,7 +26,10 @@ export class ProductService {
           name: data.name,
           price: data.price,
           image: data.image,
-          categoryId: data.categoryId
+          date: data.date,
+          category:{
+            connect: { id: Number(data.categoryId) },
+          },
         },
       });
     } catch (error) {
@@ -84,6 +87,7 @@ export class ProductService {
           name: data.name,
           price: data.price,
           image: data.image,
+          date: data.date,
           category: data.categoryId
             ? { connect: { id: +data.categoryId } }
             : data.categoryId === null
