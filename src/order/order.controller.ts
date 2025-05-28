@@ -7,10 +7,12 @@ import {
   Param,
   Delete,
   NotFoundException,
+  Put,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { OrderItemStatus } from '@prisma/client';
 
 @Controller('order')
 export class OrderController {
@@ -26,14 +28,32 @@ export class OrderController {
     return this.orderService.findAll();
   }
 
+  @Get('kitchen')
+  getKitchenOrders() {
+    return this.orderService.getKitchenOrders();
+  }
+
+  @Get('ready-items')
+  getReadyItems() {
+    return this.orderService.getReadyItems();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.orderService.findOne(+id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
     return this.orderService.update(+id, updateOrderDto);
+  }
+
+  @Patch('item/:itemId/status')
+  updateOrderItemStatus(
+    @Param('itemId') itemId: string,
+    @Body() body: { status: OrderItemStatus }
+  ) {
+    return this.orderService.updateOrderItemStatus(+itemId, body.status);
   }
 
   @Delete(':id')

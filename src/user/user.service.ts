@@ -16,7 +16,7 @@ export class UserService {
     }
     const hashPassword = await hash(data.password, 10);
     return await this.prisma.user.create({
-      data: { ...data, password: hashPassword },
+      data: { ...data, password: hashPassword, role: data.role,phone: data.phone },
     });
   }
 
@@ -31,7 +31,7 @@ export class UserService {
   async update(id: number, data: UpdateUserDto) {
     return await this.prisma.user.update({
       where: { id },
-      data: { ...data },
+      data: { ...data,role: data.role },
     });
   }
 
@@ -39,3 +39,32 @@ export class UserService {
     return await this.prisma.user.delete({ where: { id } });
   }
 }
+
+
+const RoleStructure = [
+  {
+    id:1,
+    role: 'ADMIN',
+    name:"Admin saralash"
+  },
+  {
+    id:1,
+    role: 'ADMIN',
+    name:"Admin saralash"
+  },
+  {
+    id:1,
+    role: 'ADMIN',
+    name:"Admin saralash"
+  },
+  {
+    id:1,
+    role: 'ADMIN',
+    name:"Admin saralash"
+  },
+  {
+    id:1,
+    role: 'ADMIN',
+    name:"Admin saralash"
+  }
+]
