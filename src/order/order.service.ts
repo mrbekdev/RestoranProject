@@ -6,49 +6,53 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(data: CreateOrderDto) {
-    // Foydalanuvchi mavjudligini tekshirish
-    const customer = await this.prisma.user.findUnique({
-      where: { id: data.userId },
+    // Validate table existence
+    const table = await this.prisma.table.findUnique({
+      where: { id: data.tableId },
     });
-    if (!customer) {
-      throw new NotFoundException('Customer not found');
+    if (!table) {
+      throw new NotFoundException('Table not found');
     }
 
-    // Mahsulotlar mavjudligini tekshirish va totalPrice hisoblash
-    let totalPrice = 0;
-    // Takrorlanmaydigan productId larni olish
+    // Validate user if provided
+    if (data.userId) {
+      const customer = await this.prisma.user.findUnique({
+        where: { id: data.userId },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+    }
+
+    // Validate products
     const productIds = [...new Set(data.products.map((item) => item.productId))];
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
     });
 
-    // Agar barcha mahsulotlar topilmasa
     if (products.length !== productIds.length) {
       throw new NotFoundException('One or more products not found');
     }
 
-    // TotalPrice ni hisoblash
-    for (const item of data.products) {
+    // Calculate total price
+    const totalPrice = data.products.reduce((sum, item) => {
       const product = products.find((p) => p.id === item.productId);
-      if (!product) {
-        throw new NotFoundException(`Product with ID ${item.productId} not found`);
-      }
-      totalPrice += Number(product.price) * item.count;
-    }
+      return sum + Number(product?.price) * item.count;
+    }, 0);
 
-    // Order yaratish
+    // Create order
     return await this.prisma.order.create({
       data: {
-        tableNumber: data.tableNumber,
-        status: data.status as OrderStatus,
+        table: { connect: { id: data.tableId } },
+        status: data.status || OrderStatus.PENDING,
         totalPrice,
-        user: { connect: { id: data.userId } },
+        user: data.userId ? { connect: { id: data.userId } } : undefined,
         orderItems: {
           create: data.products.map((item) => ({
-            productId: item.productId,
+            product: { connect: { id: item.productId } },
             count: item.count,
             status: OrderItemStatus.PENDING,
           })),
@@ -56,6 +60,7 @@ export class OrderService {
       },
       include: {
         user: true,
+        table: true,
         orderItems: {
           include: {
             product: true,
@@ -69,6 +74,7 @@ export class OrderService {
     return await this.prisma.order.findMany({
       include: {
         user: true,
+        table: true,
         orderItems: {
           include: {
             product: true,
@@ -83,6 +89,7 @@ export class OrderService {
       where: { id },
       include: {
         user: true,
+        table: true,
         orderItems: {
           include: {
             product: true,
@@ -99,61 +106,76 @@ export class OrderService {
 
   async update(id: number, data: UpdateOrderDto) {
     const order = await this.prisma.order.findUnique({
-      where: { id: +id },
+      where: { id },
     });
     if (!order) {
       throw new NotFoundException('Order not found');
     }
 
-    // Agar products berilgan bo'lsa, totalPrice ni qayta hisoblash
-    let totalPrice = +order.totalPrice;
+    // Validate table if provided
+    if (data.tableId) {
+      const table = await this.prisma.table.findUnique({
+        where: { id: data.tableId },
+      });
+      if (!table) {
+        throw new NotFoundException('Table not found');
+      }
+    }
+
+    // Validate user if provided
+    if (data.userId) {
+      const customer = await this.prisma.user.findUnique({
+        where: { id: data.userId },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+    }
+
+    let totalPrice = order.totalPrice;
+    let orderItemsData;
+
     if (data.products) {
-      // Takrorlanmaydigan productId larni olish
       const productIds = [...new Set(data.products.map((item) => item.productId))];
       const products = await this.prisma.product.findMany({
         where: { id: { in: productIds } },
       });
 
-      // Agar barcha mahsulotlar topilmasa
       if (products.length !== productIds.length) {
         throw new NotFoundException('One or more products not found');
       }
 
-      // TotalPrice ni hisoblash
-      totalPrice = 0;
-      for (const item of data.products) {
+      totalPrice = data.products.reduce((sum, item) => {
         const product = products.find((p) => p.id === item.productId);
-        if (!product) {
-          throw new NotFoundException(`Product with ID ${item.productId} not found`);
-        }
-        totalPrice += Number(product.price) * item.count;
-      }
+        return sum + Number(product?.price) * item.count;
+      }, 0);
 
-      // Eski OrderItem'larni o'chirish
+      // Delete existing order items
       await this.prisma.orderItem.deleteMany({
-        where: { orderId: +id },
+        where: { orderId: id },
       });
+
+      orderItemsData = {
+        create: data.products.map((item) => ({
+          product: { connect: { id: item.productId } },
+          count: item.count,
+          status: OrderItemStatus.PENDING,
+        })),
+      };
     }
 
     return await this.prisma.order.update({
       where: { id },
       data: {
-        tableNumber: data.tableNumber,
+        table: data.tableId ? { connect: { id: data.tableId } } : undefined,
         status: data.status,
-        totalPrice: totalPrice,
+        totalPrice,
         user: data.userId ? { connect: { id: data.userId } } : undefined,
-        orderItems: data.products
-          ? {
-              create: data.products.map((item) => ({
-                productId: item.productId,
-                count: item.count,
-                status: OrderItemStatus.PENDING,
-              })),
-            }
-          : undefined,
+        orderItems: orderItemsData,
       },
       include: {
         user: true,
+        table: true,
         orderItems: {
           include: {
             product: true,
@@ -163,13 +185,12 @@ export class OrderService {
     });
   }
 
-  // Mahsulot statusini o'zgartirish
   async updateOrderItemStatus(orderItemId: number, status: OrderItemStatus) {
     const orderItem = await this.prisma.orderItem.findUnique({
       where: { id: orderItemId },
-      include: { 
+      include: {
         order: true,
-        product: true
+        product: true,
       },
     });
 
@@ -177,12 +198,11 @@ export class OrderService {
       throw new NotFoundException('Order item not found');
     }
 
-    // Order item statusini yangilash
     const updatedOrderItem = await this.prisma.orderItem.update({
       where: { id: orderItemId },
       data: {
         status,
-        preparedAt: status === OrderItemStatus.READY ? new Date() : undefined,
+        preparedAt: status === OrderItemStatus.READY ? new Date() : null,
       },
       include: {
         product: true,
@@ -190,26 +210,27 @@ export class OrderService {
       },
     });
 
-    // Barcha order item'lar tayyor bo'lganda order statusini yangilash
     await this.updateOrderStatusIfAllItemsReady(orderItem.orderId);
 
     return updatedOrderItem;
   }
 
-  // Barcha mahsulotlar tayyor bo'lganda order statusini yangilash
   private async updateOrderStatusIfAllItemsReady(orderId: number) {
     const orderItems = await this.prisma.orderItem.findMany({
       where: { orderId },
     });
 
-    const allReady = orderItems.every(item => item.status === OrderItemStatus.READY);
-    
-    if (allReady && orderItems.length > 0) {
+    if (orderItems.length === 0) return;
+
+    const allReady = orderItems.every((item) => item.status === OrderItemStatus.READY);
+    const hasCooking = orderItems.some((item) => item.status === OrderItemStatus.COOKING);
+
+    if (allReady) {
       await this.prisma.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.READY },
       });
-    } else if (orderItems.some(item => item.status === OrderItemStatus.COOKING)) {
+    } else if (hasCooking) {
       await this.prisma.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.COOKING },
@@ -217,7 +238,6 @@ export class OrderService {
     }
   }
 
-  // Kitchen uchun - pishirilayotgan mahsulotlarni ko'rish
   async getKitchenOrders() {
     return await this.prisma.order.findMany({
       where: {
@@ -227,6 +247,7 @@ export class OrderService {
       },
       include: {
         user: true,
+        table: true,
         orderItems: {
           where: {
             status: {
@@ -241,7 +262,6 @@ export class OrderService {
     });
   }
 
-  // Tayyor mahsulotlarni ko'rish
   async getReadyItems() {
     return await this.prisma.orderItem.findMany({
       where: {
@@ -252,6 +272,7 @@ export class OrderService {
         order: {
           include: {
             user: true,
+            table: true,
           },
         },
       },
@@ -266,7 +287,6 @@ export class OrderService {
       throw new NotFoundException('Order not found');
     }
 
-    // OrderItem'larni o'chirish
     await this.prisma.orderItem.deleteMany({
       where: { orderId: id },
     });

@@ -13,9 +13,9 @@ class OrderProductDto {
 }
 
 export class UpdateOrderDto {
-  @IsString()
+  @IsInt()
   @IsOptional()
-  tableNumber?: string;
+  tableId?: number;
 
   @IsEnum(OrderStatus)
   @IsOptional()

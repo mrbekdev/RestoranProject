@@ -13,9 +13,8 @@ class OrderProductDto {
 }
 
 export class CreateOrderDto {
-  @IsString()
-  @IsNotEmpty()
-  tableNumber: string;
+  @IsInt()
+  tableId: number;
 
   @IsEnum(OrderStatus)
   status: OrderStatus;
@@ -27,4 +26,6 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => OrderProductDto)
   products: OrderProductDto[];
+  @IsInt()
+  totalPrice?: number; 
 }
