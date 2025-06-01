@@ -22,6 +22,7 @@ export class TableService {
         data: {
           name: createTableDto.name,
           number: createTableDto.number,
+          status: createTableDto.status || 'empty',
         },
       });
 
@@ -177,8 +178,9 @@ export class TableService {
       const updatedTable = await this.prisma.table.update({
         where: { id },
         data: {
-          ...(updateTableDto.name && { name: updateTableDto.name }),
-          ...(updateTableDto.number && { number: updateTableDto.number }),
+          name:updateTableDto.name,
+          number: updateTableDto.number,
+          status: updateTableDto.status || 'empty', // Agar status berilmagan bo'lsa, eski statusni saqlash
         },
       });
 

@@ -37,7 +37,7 @@ export class OrderService {
       throw new NotFoundException('One or more products not found');
     }
 
-    // Calculate total price
+  
     const totalPrice = data.products.reduce((sum, item) => {
       const product = products.find((p) => p.id === item.productId);
       return sum + Number(product?.price) * item.count;
@@ -72,6 +72,9 @@ export class OrderService {
 
   async findAll() {
     return await this.prisma.order.findMany({
+      where:{
+        status:!''
+      }
       include: {
         user: true,
         table: true,
@@ -295,4 +298,6 @@ export class OrderService {
       where: { id },
     });
   }
+  
+
 }
