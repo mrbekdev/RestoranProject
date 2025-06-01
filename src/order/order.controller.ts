@@ -55,7 +55,11 @@ export class OrderController {
   ) {
     return this.orderService.updateOrderItemStatus(+itemId, body.status);
   }
-
+  @Delete('orderItem/:id')
+  removeItem(@Param('id') id: string) {
+    return this.orderService.removeItem(+id);
+  }
+  
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.orderService.remove(+id);

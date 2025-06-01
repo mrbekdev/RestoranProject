@@ -72,9 +72,6 @@ export class OrderService {
 
   async findAll() {
     return await this.prisma.order.findMany({
-      where:{
-        status:!''
-      }
       include: {
         user: true,
         table: true,
@@ -295,6 +292,18 @@ export class OrderService {
     });
 
     return await this.prisma.order.delete({
+      where: { id },
+    });
+  }
+  async removeItem(id: number) {
+    const order = await this.prisma.orderItem.findUnique({
+      where: { id },
+    });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return await this.prisma.orderItem.delete({
       where: { id },
     });
   }
