@@ -20,6 +20,6 @@ import { OrderGateway } from './order/order.gateway';
     TableModule,
   ],
   controllers: [AppController],
-  providers: [AppService,OrderGateway],
+  providers: [AppService],
 })
 export class AppModule {}

@@ -6,6 +6,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderGateway } from './order.gateway';
 import { TableService } from '../table/table.service';
 
+@Injectable()
 export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
