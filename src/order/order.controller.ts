@@ -51,18 +51,18 @@ export class OrderController {
   @Patch('item/:itemId/status')
   updateOrderItemStatus(
     @Param('itemId') itemId: string,
-    @Body() body: { status: OrderItemStatus; restaurantId?: string },
+    @Body() body: { status: OrderItemStatus },
   ) {
     return this.orderService.updateOrderItemStatus(+itemId, body.status);
   }
 
   @Delete('orderItem/:id')
-  removeItem(@Param('id') id: string, @Body() body: { restaurantId?: string }) {
+  removeItem(@Param('id') id: string) {
     return this.orderService.removeItem(+id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Body() body: { restaurantId?: string }) {
+  remove(@Param('id') id: string) {
     return this.orderService.remove(+id);
   }
 }

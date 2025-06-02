@@ -1,15 +1,12 @@
-// src/order/order.module.ts
 import { Module } from '@nestjs/common';
-
 import { OrderController } from './order.controller';
 import { OrderGateway } from './order.gateway';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { TableService } from 'src/table/table.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { OrderService } from './order.service';
 
 @Module({
   controllers: [OrderController],
-  providers: [OrderService, OrderGateway, TableService, PrismaService],
-  exports: [ OrderGateway],
+  providers: [OrderService, OrderGateway, PrismaService],
+  exports: [OrderGateway, OrderService],
 })
 export class OrderModule {}

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
+import { OrderItemStatus, TableStatus } from '@prisma/client';
 
 @Injectable()
 export class TableService {
@@ -357,5 +358,17 @@ export class TableService {
       }
       throw new BadRequestException('Stol statistikasini olishda xatolik yuz berdi');
     }
+  }
+  async updateStatus(tableId: number, status: TableStatus) {
+    const table = await this.prisma.table.findUnique({
+      where: { id: tableId },
+    });
+    if (!table) {
+      throw new NotFoundException('Table not found');
+    }
+    return await this.prisma.table.update({
+      where: { id: tableId },
+      data: { status: status },
+    });
   }
 }
