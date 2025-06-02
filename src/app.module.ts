@@ -8,6 +8,7 @@ import { CategoryModule } from './category/category.module';
 import { OrderModule } from './order/order.module';
 import { AuthModule } from './auth/auth.module';
 import { TableModule } from './table/table.module';
+import { OrderGateway } from './order/order.gateway';
 
 @Module({
   imports: [
@@ -15,9 +16,10 @@ import { TableModule } from './table/table.module';
     UserModule,
     CategoryModule,
     AuthModule,
+    OrderModule,
     TableModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService,OrderGateway],
 })
 export class AppModule {}
