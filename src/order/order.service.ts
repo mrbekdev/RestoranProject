@@ -1,12 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+// src/order/order.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderStatus, OrderItemStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { OrderGateway } from './order.gateway';
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly orderGateway: OrderGateway,
+  ) {}
 
   async create(data: CreateOrderDto) {
     // Validate table existence
@@ -37,14 +42,13 @@ export class OrderService {
       throw new NotFoundException('One or more products not found');
     }
 
-  
     const totalPrice = data.products.reduce((sum, item) => {
       const product = products.find((p) => p.id === item.productId);
       return sum + Number(product?.price) * item.count;
     }, 0);
 
     // Create order
-    return await this.prisma.order.create({
+    const order = await this.prisma.order.create({
       data: {
         table: { connect: { id: data.tableId } },
         status: data.status || OrderStatus.PENDING,
@@ -68,6 +72,11 @@ export class OrderService {
         },
       },
     });
+
+    // Emit WebSocket event for order creation
+    this.orderGateway.notifyOrderCreated(order);
+
+    return order;
   }
 
   async findAll() {
@@ -164,7 +173,7 @@ export class OrderService {
       };
     }
 
-    return await this.prisma.order.update({
+    const updatedOrder = await this.prisma.order.update({
       where: { id },
       data: {
         table: data.tableId ? { connect: { id: data.tableId } } : undefined,
@@ -183,6 +192,11 @@ export class OrderService {
         },
       },
     });
+
+    // Emit WebSocket event for order update
+    this.orderGateway.notifyOrderUpdated(updatedOrder);
+
+    return updatedOrder;
   }
 
   async updateOrderItemStatus(orderItemId: number, status: OrderItemStatus) {
@@ -210,6 +224,9 @@ export class OrderService {
       },
     });
 
+    // Emit WebSocket event for order item status update
+    this.orderGateway.notifyOrderItemStatusUpdated(updatedOrderItem);
+
     await this.updateOrderStatusIfAllItemsReady(orderItem.orderId);
 
     return updatedOrderItem;
@@ -226,15 +243,17 @@ export class OrderService {
     const hasCooking = orderItems.some((item) => item.status === OrderItemStatus.COOKING);
 
     if (allReady) {
-      await this.prisma.order.update({
+      const updatedOrder = await this.prisma.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.READY },
       });
+      this.orderGateway.notifyOrderUpdated(updatedOrder);
     } else if (hasCooking) {
-      await this.prisma.order.update({
+      const updatedOrder = await this.prisma.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.COOKING },
       });
+      this.orderGateway.notifyOrderUpdated(updatedOrder);
     }
   }
 
@@ -291,22 +310,34 @@ export class OrderService {
       where: { orderId: id },
     });
 
-    return await this.prisma.order.delete({
+    const deletedOrder = await this.prisma.order.delete({
       where: { id },
     });
+
+    // Emit WebSocket event for order deletion
+    this.orderGateway.notifyOrderDeleted(id);
+
+    return deletedOrder;
   }
+
   async removeItem(id: number) {
-    const order = await this.prisma.orderItem.findUnique({
+    const orderItem = await this.prisma.orderItem.findUnique({
       where: { id },
     });
-    if (!order) {
-      throw new NotFoundException('Order not found');
+    if (!orderItem) {
+      throw new NotFoundException('Order item not found');
     }
 
-    return await this.prisma.orderItem.delete({
+    const deletedOrderItem = await this.prisma.orderItem.delete({
       where: { id },
     });
-  }
-  
 
+    // Emit WebSocket event for order item deletion
+    this.orderGateway.notifyOrderItemDeleted(id);
+
+    // Update order status if necessary
+    await this.updateOrderStatusIfAllItemsReady(orderItem.orderId);
+
+    return deletedOrderItem;
+  }
 }
