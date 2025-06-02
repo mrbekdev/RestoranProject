@@ -1,28 +1,30 @@
-// src/order/order.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderStatus, OrderItemStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderGateway } from './order.gateway';
+import { TableService } from '../table/table.service';
 
 @Injectable()
 export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly orderGateway: OrderGateway,
+    private readonly tableService: TableService,
   ) {}
 
   async create(data: CreateOrderDto) {
-    // Validate table existence
     const table = await this.prisma.table.findUnique({
       where: { id: data.tableId },
     });
     if (!table) {
       throw new NotFoundException('Table not found');
     }
+    if (table.status === 'busy') {
+      throw new NotFoundException('Table is already occupied');
+    }
 
-    // Validate user if provided
     if (data.userId) {
       const customer = await this.prisma.user.findUnique({
         where: { id: data.userId },
@@ -32,7 +34,6 @@ export class OrderService {
       }
     }
 
-    // Validate products
     const productIds = [...new Set(data.products.map((item) => item.productId))];
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
@@ -47,7 +48,6 @@ export class OrderService {
       return sum + Number(product?.price) * item.count;
     }, 0);
 
-    // Create order
     const order = await this.prisma.order.create({
       data: {
         table: { connect: { id: data.tableId } },
@@ -73,9 +73,7 @@ export class OrderService {
       },
     });
 
-    // Emit WebSocket event for order creation
     this.orderGateway.notifyOrderCreated(order);
-
     return order;
   }
 
@@ -121,7 +119,6 @@ export class OrderService {
       throw new NotFoundException('Order not found');
     }
 
-    // Validate table if provided
     if (data.tableId) {
       const table = await this.prisma.table.findUnique({
         where: { id: data.tableId },
@@ -131,7 +128,6 @@ export class OrderService {
       }
     }
 
-    // Validate user if provided
     if (data.userId) {
       const customer = await this.prisma.user.findUnique({
         where: { id: data.userId },
@@ -159,7 +155,6 @@ export class OrderService {
         return sum + Number(product?.price) * item.count;
       }, 0);
 
-      // Delete existing order items
       await this.prisma.orderItem.deleteMany({
         where: { orderId: id },
       });
@@ -193,13 +188,11 @@ export class OrderService {
       },
     });
 
-    // Emit WebSocket event for order update
     this.orderGateway.notifyOrderUpdated(updatedOrder);
-
     return updatedOrder;
   }
 
-  async updateOrderItemStatus(orderItemId: number, status: OrderItemStatus) {
+  async updateOrderItemStatus(orderItemId: number, status: OrderItemStatus, restaurantId?: string) {
     const orderItem = await this.prisma.orderItem.findUnique({
       where: { id: orderItemId },
       include: {
@@ -224,15 +217,12 @@ export class OrderService {
       },
     });
 
-    // Emit WebSocket event for order item status update
-    this.orderGateway.notifyOrderItemStatusUpdated(updatedOrderItem);
-
-    await this.updateOrderStatusIfAllItemsReady(orderItem.orderId);
-
+    this.orderGateway.notifyOrderItemStatusUpdated(updatedOrderItem, restaurantId);
+    await this.updateOrderStatusIfAllItemsReady(orderItem.orderId, restaurantId);
     return updatedOrderItem;
   }
 
-  private async updateOrderStatusIfAllItemsReady(orderId: number) {
+  private async updateOrderStatusIfAllItemsReady(orderId: number, restaurantId?: string) {
     const orderItems = await this.prisma.orderItem.findMany({
       where: { orderId },
     });
@@ -247,13 +237,13 @@ export class OrderService {
         where: { id: orderId },
         data: { status: OrderStatus.READY },
       });
-      this.orderGateway.notifyOrderUpdated(updatedOrder);
+      this.orderGateway.notifyOrderUpdated(updatedOrder, restaurantId);
     } else if (hasCooking) {
       const updatedOrder = await this.prisma.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.COOKING },
       });
-      this.orderGateway.notifyOrderUpdated(updatedOrder);
+      this.orderGateway.notifyOrderUpdated(updatedOrder, restaurantId);
     }
   }
 
@@ -298,7 +288,7 @@ export class OrderService {
     });
   }
 
-  async remove(id: number) {
+  async remove(id: number, restaurantId?: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
     });
@@ -314,13 +304,11 @@ export class OrderService {
       where: { id },
     });
 
-    // Emit WebSocket event for order deletion
-    this.orderGateway.notifyOrderDeleted(id);
-
+    this.orderGateway.notifyOrderDeleted(id, restaurantId);
     return deletedOrder;
   }
 
-  async removeItem(id: number) {
+  async removeItem(id: number, restaurantId?: string) {
     const orderItem = await this.prisma.orderItem.findUnique({
       where: { id },
     });
@@ -332,12 +320,8 @@ export class OrderService {
       where: { id },
     });
 
-    // Emit WebSocket event for order item deletion
-    this.orderGateway.notifyOrderItemDeleted(id);
-
-    // Update order status if necessary
-    await this.updateOrderStatusIfAllItemsReady(orderItem.orderId);
-
+    this.orderGateway.notifyOrderItemDeleted(id, restaurantId);
+    await this.updateOrderStatusIfAllItemsReady(orderItem.orderId, restaurantId);
     return deletedOrderItem;
   }
 }

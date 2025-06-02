@@ -1,4 +1,3 @@
-// src/order/order.controller.ts
 import {
   Controller,
   Get,
@@ -52,18 +51,18 @@ export class OrderController {
   @Patch('item/:itemId/status')
   updateOrderItemStatus(
     @Param('itemId') itemId: string,
-    @Body() body: { status: OrderItemStatus },
+    @Body() body: { status: OrderItemStatus; restaurantId?: string },
   ) {
     return this.orderService.updateOrderItemStatus(+itemId, body.status);
   }
 
   @Delete('orderItem/:id')
-  removeItem(@Param('id') id: string) {
+  removeItem(@Param('id') id: string, @Body() body: { restaurantId?: string }) {
     return this.orderService.removeItem(+id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @Body() body: { restaurantId?: string }) {
     return this.orderService.remove(+id);
   }
 }

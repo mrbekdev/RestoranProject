@@ -4,6 +4,7 @@ import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
 import { OrderGateway } from './order.gateway';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { TableService } from 'src/table/table.service';
 
 @Module({
   controllers: [OrderController],
