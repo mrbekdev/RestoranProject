@@ -30,4 +30,7 @@ export class UpdateOrderDto {
   @Type(() => OrderProductDto)
   @IsOptional()
   products?: OrderProductDto[];
+    @IsOptional()
+  @IsString()
+  carrierNumber:string;
 }

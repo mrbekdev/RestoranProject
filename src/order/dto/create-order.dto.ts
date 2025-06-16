@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsString, IsEnum, IsArray, ValidateNested, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, IsEnum, IsArray, ValidateNested, Min, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderStatus } from '@prisma/client';
 
@@ -27,5 +27,8 @@ export class CreateOrderDto {
   @Type(() => OrderProductDto)
   products: OrderProductDto[];
   @IsInt()
-  totalPrice?: number; 
+  totalPrice?: number;
+  @IsOptional()
+  @IsString()
+  carrierNumber:string;
 }

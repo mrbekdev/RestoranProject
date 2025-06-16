@@ -10,6 +10,7 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { OrderItemStatus, OrderStatus, TableStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateOrderDto } from './dto/update-order.dto';
 
 @WebSocketGateway({
   cors: {
@@ -112,19 +113,24 @@ export class OrderGateway {
     }
   }
 
-  @SubscribeMessage('update_order_status')
-  async handleUpdateOrderStatus(@MessageBody() data: { orderId: number; status: OrderStatus }, @ConnectedSocket() client: Socket) {
-    try {
-      const order = await this.orderService.update(data.orderId, { status: data.status });
-      this.server.emit('orderUpdated', order);
-      client.emit('update_order_status_response', { status: 'ok', order });
-    } catch (error) {
-      client.emit('update_order_status_response', {
-        status: 'error',
-        message: error.message || 'Failed to update order status',
-      });
-    }
+@SubscribeMessage('update_order_status')
+async handleUpdateOrderStatus(@MessageBody() data: { orderId: number; status: OrderStatus }, @ConnectedSocket() client: Socket) {
+  try {
+    const updateOrderDto: UpdateOrderDto = {
+      status: data.status,
+      carrierNumber:''
+      // Omit carrierNumber since it's optional and not provided in the input
+    };
+    const order = await this.orderService.update(data.orderId, updateOrderDto);
+    this.server.emit('orderUpdated', order);
+    client.emit('update_order_status_response', { status: 'ok', order });
+  } catch (error) {
+    client.emit('update_order_status_response', {
+      status: 'error',
+      message: error.message || 'Failed to update order status',
+    });
   }
+}
 
   notifyOrderCreated(order: any) {
     this.server.emit('orderCreated', order);
