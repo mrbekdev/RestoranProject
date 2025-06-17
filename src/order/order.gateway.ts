@@ -18,6 +18,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
   },
 })
 @Injectable()
+
 export class OrderGateway {
   @WebSocketServer()
   server: Server;

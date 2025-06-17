@@ -9,7 +9,7 @@ export class CreateTableDto {
     
     @IsInt()
     @IsNotEmpty()
-    number: number;
+    number: string;
     @IsEnum(TableStatus)
     status:TableStatus
 }

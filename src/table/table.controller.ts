@@ -97,7 +97,7 @@ export class TableController {
     status: 404,
     description: 'Stol topilmadi'
   })
-  async findByNumber(@Param('number', ParseIntPipe) number: number) {
+  async findByNumber(@Param('number', ParseIntPipe) number: string) {
     return await this.tableService.findByNumber(number);
   }
 

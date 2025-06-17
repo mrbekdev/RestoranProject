@@ -114,7 +114,7 @@ export class TableService {
   }
 
   // READ BY NUMBER - Raqam bo'yicha stolni olish
-  async findByNumber(number: number) {
+  async findByNumber(number: string) {
     try {
       const table = await this.prisma.table.findUnique({
         where: { number },
