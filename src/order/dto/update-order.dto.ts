@@ -13,24 +13,29 @@ class OrderProductDto {
 }
 
 export class UpdateOrderDto {
-  @IsInt()
   @IsOptional()
+  @IsInt()
   tableId?: number;
 
-  @IsEnum(OrderStatus)
   @IsOptional()
+  @IsEnum(OrderStatus)
   status?: OrderStatus;
 
-  @IsInt()
   @IsOptional()
+  @IsInt()
   userId?: number;
 
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => OrderProductDto)
-  @IsOptional()
   products?: OrderProductDto[];
-    @IsOptional()
+
+  @IsOptional()
+  @IsInt()
+  totalPrice?: number;
+
+  @IsOptional()
   @IsString()
-  carrierNumber:string;
+  carrierNumber?: string;
 }

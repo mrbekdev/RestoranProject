@@ -11,7 +11,7 @@ export class OrderService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => OrderGateway))
     private readonly orderGateway: OrderGateway,
-  ) { }
+  ) {}
 
   async create(data: CreateOrderDto) {
     if (data.userId) {
@@ -22,21 +22,22 @@ export class OrderService {
         throw new NotFoundException('Customer not found');
       }
     }
-    const table = await this.prisma.table.findUnique({
-      where: { id: data.tableId },
-    });
-    if (!table) {
-      throw new NotFoundException('Table not found');
+
+    if (data.tableId) {
+      const table = await this.prisma.table.findUnique({
+        where: { id: data.tableId },
+      });
+      if (!table) {
+        throw new NotFoundException('Table not found');
+      }
     }
 
-    // Bir xil productlarni birlashtirish
-    const productMap = new Map < number, number> ();
+    const productMap = new Map<number, number>();
     data.products.forEach((item) => {
       const existingCount = productMap.get(item.productId) || 0;
       productMap.set(item.productId, existingCount + item.count);
     });
 
-    // Unique product ID'larni olish
     const productIds = Array.from(productMap.keys());
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
@@ -46,7 +47,6 @@ export class OrderService {
       throw new NotFoundException('One or more products not found');
     }
 
-    // Total price hisoblash (birlashtirilgan count'lar bilan)
     const totalPrice = Array.from(productMap.entries()).reduce((sum, [productId, count]) => {
       const product = products.find((p) => p.id === productId);
       return sum + Number(product?.price) * count;
@@ -54,17 +54,16 @@ export class OrderService {
 
     const order = await this.prisma.order.create({
       data: {
-        table: { connect: { id: data.tableId } },
+        table: data.tableId ? { connect: { id: data.tableId } } : undefined,
         status: data.status || OrderStatus.PENDING,
         totalPrice,
-        carrierNumber: data.carrierNumber,
+        carrierNumber: data.carrierNumber || null,
         user: data.userId ? { connect: { id: data.userId } } : undefined,
         orderItems: {
           create: Array.from(productMap.entries()).map(([productId, count]) => ({
             product: { connect: { id: productId } },
             count: count,
             status: OrderItemStatus.PENDING,
-
           })),
         },
       },
@@ -117,105 +116,103 @@ export class OrderService {
     return order;
   }
 
-async update(id: number, data: UpdateOrderDto) {
-  const order = await this.prisma.order.findUnique({
-    where: { id },
-    include: {
-      orderItems: {
-        include: {
-          product: true,
+  async update(id: number, data: UpdateOrderDto) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: {
+        orderItems: {
+          include: {
+            product: true,
+          },
         },
       },
-    },
-  });
-  if (!order) {
-    throw new NotFoundException('Order not found');
-  }
-  if (data.tableId) {
-    const table = await this.prisma.table.findUnique({
-      where: { id: data.tableId },
     });
-    if (!table) {
-      throw new NotFoundException('Table not found');
-    }
-  }
-  if (data.userId) {
-    const customer = await this.prisma.user.findUnique({
-      where: { id: data.userId },
-    });
-    if (!customer) {
-      throw new NotFoundException('Customer not found');
-    }
-  }
-
-  let totalPrice = order.totalPrice;
-  let orderItemsData;
-
-  if (data.products) {
-    // Bir xil productlarni birlashtirish (yangi qo'shiladigan productlar uchun)
-    const productMap = new Map<number, number>();
-    data.products.forEach((item) => {
-      const existingCount = productMap.get(item.productId) || 0;
-      productMap.set(item.productId, existingCount + item.count);
-    });
-
-    // Unique product ID'larni olish
-    const productIds = Array.from(productMap.keys());
-    const products = await this.prisma.product.findMany({
-      where: { id: { in: productIds } },
-    });
-
-    if (products.length !== productIds.length) {
-      throw new NotFoundException('One or more products not found');
+    if (!order) {
+      throw new NotFoundException('Order not found');
     }
 
-    // Faqat yangi qo'shilayotgan itemlarning price'ini hisoblash
-    const newItemsPrice = Array.from(productMap.entries()).reduce((sum, [productId, count]) => {
-      const product = products.find((p) => p.id === productId);
-      return sum + Number(product?.price) * count;
-    }, 0);
+    if (data.tableId) {
+      const table = await this.prisma.table.findUnique({
+        where: { id: data.tableId },
+      });
+      if (!table) {
+        throw new NotFoundException('Table not found');
+      }
+    }
 
-    // Total price = mavjud order price + yangi itemlar price
-    totalPrice = order.totalPrice + newItemsPrice;
+    if (data.userId) {
+      const customer = await this.prisma.user.findUnique({
+        where: { id: data.userId },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+    }
 
-    // Faqat yangi itemlarni yaratish (birlashtirilgan count'lar bilan)
-    orderItemsData = {
-      create: Array.from(productMap.entries()).map(([productId, count]) => ({
-        product: { connect: { id: productId } },
-        count: count,
-        status: OrderItemStatus.PENDING,
-      })),
-    };
-  }
+    let totalPrice = order.totalPrice;
+    let orderItemsData;
 
-  const updatedOrder = await this.prisma.order.update({
-    where: { id },
-    data: {
-      table: data.tableId ? { connect: { id: data.tableId } } : undefined,
-      status: data.status || order.status,
-      carrierNumber: data?.carrierNumber ? data.carrierNumber : null,
-      totalPrice,
-      user: data.userId ? { connect: { id: data.userId } } : undefined,
-      orderItems: orderItemsData,
-    },
-    include: {
-      user: true,
-      table: true,
-      orderItems: {
-        include: {
-          product: true,
+    if (data.products) {
+      const productMap = new Map<number, number>();
+      data.products.forEach((item) => {
+        const existingCount = productMap.get(item.productId) || 0;
+        productMap.set(item.productId, existingCount + item.count);
+      });
+
+      const productIds = Array.from(productMap.keys());
+      const products = await this.prisma.product.findMany({
+        where: { id: { in: productIds } },
+      });
+
+      if (products.length !== productIds.length) {
+        throw new NotFoundException('One or more products not found');
+      }
+
+      const newItemsPrice = Array.from(productMap.entries()).reduce((sum, [productId, count]) => {
+        const product = products.find((p) => p.id === productId);
+        return sum + Number(product?.price) * count;
+      }, 0);
+
+      totalPrice = order.totalPrice + newItemsPrice;
+
+      orderItemsData = {
+        create: Array.from(productMap.entries()).map(([productId, count]) => ({
+          product: { connect: { id: productId } },
+          count: count,
+          status: OrderItemStatus.PENDING,
+        })),
+      };
+    }
+
+    const updatedOrder = await this.prisma.order.update({
+      where: { id },
+      data: {
+        table: data.tableId ? { connect: { id: data.tableId } } : undefined,
+        status: data.status || order.status,
+        carrierNumber: data.carrierNumber !== undefined ? data.carrierNumber : order.carrierNumber,
+        totalPrice,
+        user: data.userId ? { connect: { id: data.userId } } : undefined,
+        orderItems: orderItemsData,
+      },
+      include: {
+        user: true,
+        table: true,
+        orderItems: {
+          include: {
+            product: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (data.products) {
-    await this.updateOrderStatusIfAllItemsReady(id);
+    if (data.products) {
+      await this.updateOrderStatusIfAllItemsReady(id); // Correct call to private method
+    }
+
+    this.orderGateway.notifyOrderUpdated(updatedOrder);
+    return updatedOrder;
   }
 
-  this.orderGateway.notifyOrderUpdated(updatedOrder);
-  return updatedOrder;
-}
   async updateOrderItemStatus(orderItemId: number, status: OrderItemStatus) {
     const orderItem = await this.prisma.orderItem.findUnique({
       where: { id: orderItemId },

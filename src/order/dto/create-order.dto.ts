@@ -27,9 +27,12 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => OrderProductDto)
   products: OrderProductDto[];
+
+  @IsOptional()
   @IsInt()
   totalPrice?: number;
+
   @IsOptional()
   @IsString()
-  carrierNumber:string;
+  carrierNumber?: string; // Changed to optional
 }
