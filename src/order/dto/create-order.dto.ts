@@ -13,8 +13,9 @@ class OrderProductDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional()
   @IsInt()
-  tableId: number;
+  tableId?: number;
 
   @IsEnum(OrderStatus)
   status: OrderStatus;
