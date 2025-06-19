@@ -1,17 +1,16 @@
-// dto/create-table.dto.ts
-import { TableStatus } from "@prisma/client";
-import { IsEnum, IsInt, IsNotEmpty, IsString } from "class-validator";
+// create-table.dto.ts
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { TableStatus } from '@prisma/client';
 
 export class CreateTableDto {
-    @IsString()
-    @IsNotEmpty()
-    name: string;
-    
-    @IsInt()
-    @IsNotEmpty()
-    number: string;
-    @IsEnum(TableStatus)
-    status:TableStatus
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  number: string;
+
+  @IsOptional()
+  status?: TableStatus;
 }
-
-

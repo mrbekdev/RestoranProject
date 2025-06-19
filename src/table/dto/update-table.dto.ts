@@ -1,6 +1,16 @@
+// update-table.dto.ts
+import { IsString, IsOptional } from 'class-validator';
+import { TableStatus } from '@prisma/client';
 
-// dto/update-table.dto.ts
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateTableDto } from './create-table.dto';
+export class UpdateTableDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
 
-export class UpdateTableDto extends PartialType(CreateTableDto) {}
+  @IsString()
+  @IsOptional()
+  number?: string;
+
+  @IsOptional()
+  status?: TableStatus;
+}
