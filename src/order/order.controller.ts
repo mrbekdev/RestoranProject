@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  NotFoundException,
   Put,
 } from '@nestjs/common';
 import { OrderService } from './order.service';

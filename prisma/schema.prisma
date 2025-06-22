@@ -16,19 +16,22 @@ model User {
   phone     String
   role      Role     @default(CUSTOMER)
   Order     Order[]
-  createdAt DateTime @default(now())
+  assignedProducts Product[] @relation("AssignedTo")
+  createdAt DateTime  @default(now())
 }
 
 model Product {
-  id         Int         @id @default(autoincrement())
-  name       String
-  price      Decimal
-  image      String?
-  date       String?
-  category   Category?   @relation(fields: [categoryId], references: [id])
-  categoryId Int?
-  createdAt  DateTime    @default(now())
-  orderItems OrderItem[]
+  id          Int       @id @default(autoincrement())
+  name        String
+  price       Decimal
+  image       String?
+  date        String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  categoryId  Int?
+  assignedTo  User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
+  assignedToId Int?
+  createdAt   DateTime  @default(now())
+  orderItems  OrderItem[]
 }
 
 model Category {
@@ -43,7 +46,7 @@ model Category {
 model Table {
   id        Int         @id @default(autoincrement())
   name      String
-  number    String         @unique
+  number    String      @unique
   status    TableStatus @default(empty)
   orders    Order[]
   createdAt DateTime    @default(now())
@@ -52,7 +55,7 @@ model Table {
 model Order {
   id            Int         @id @default(autoincrement())
   table         Table?      @relation(fields: [tableId], references: [id])
-  tableId       Int?        // <-- ixtiyoriy qildik
+  tableId       Int?
   status        OrderStatus @default(PENDING)
   totalPrice    Int
   user          User?       @relation(fields: [userId], references: [id])
@@ -61,7 +64,6 @@ model Order {
   createdAt     DateTime    @default(now())
   orderItems    OrderItem[]
 }
-
 
 model OrderItem {
   id         Int             @id @default(autoincrement())
@@ -73,6 +75,12 @@ model OrderItem {
   status     OrderItemStatus @default(PENDING)
   preparedAt DateTime?
   createdAt  DateTime        @default(now())
+}
+
+model Percent {
+  id        Int      @id @default(autoincrement())
+  percent   Float
+  createdAt DateTime @default(now())
 }
 
 enum Role {
@@ -101,10 +109,4 @@ enum OrderItemStatus {
 enum TableStatus {
   empty
   busy
-}
-
-model Percent{
-  id Int @id @default(autoincrement())
-  percent Float
-  createdAt DateTime @default(now())
 }

@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { Product } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class ProductService {
@@ -10,26 +10,40 @@ export class ProductService {
 
   async create(data: CreateProductDto) {
     try {
-      // Validate category if provided
       if (data.categoryId) {
         const category = await this.prisma.category.findUnique({
-          where: { id: +data.categoryId },
+          where: { id: Number(data.categoryId) },
         });
         if (!category) {
           throw new NotFoundException(`Category with ID ${data.categoryId} not found`);
         }
       }
 
-      // Create product
+      if (data.assignedToId) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: Number(data.assignedToId) },
+        });
+        if (!user || user.role !== Role.KITCHEN) {
+          throw new NotFoundException(`Kitchen staff with ID ${data.assignedToId} not found`);
+        }
+      } else {
+        const kitchenStaff = await this.prisma.user.findMany({
+          where: { role: Role.KITCHEN },
+        });
+        if (!kitchenStaff.length) {
+          throw new NotFoundException('No kitchen staff available');
+        }
+        data.assignedToId = kitchenStaff[Math.floor(Math.random() * kitchenStaff.length)].id;
+      }
+
       return await this.prisma.product.create({
         data: {
           name: data.name,
           price: data.price,
-          image: data.image,
-          date: data.date,
-          category:{
-            connect: { id: Number(data.categoryId) },
-          },
+          image: data.image || null,
+          date: data.date || null,
+          category: data.categoryId ? { connect: { id: Number(data.categoryId) } } : undefined,
+          assignedTo: data.assignedToId ? { connect: { id: Number(data.assignedToId) } } : undefined,
         },
       });
     } catch (error) {
@@ -44,6 +58,7 @@ export class ProductService {
     return await this.prisma.product.findMany({
       include: {
         category: true,
+        assignedTo: true,
       },
     });
   }
@@ -53,6 +68,7 @@ export class ProductService {
       where: { id },
       include: {
         category: true,
+        assignedTo: true,
       },
     });
 
@@ -71,26 +87,39 @@ export class ProductService {
         throw new NotFoundException(`Product with ID ${id} not found`);
       }
 
-      // Validate category if provided
       if (data.categoryId) {
         const category = await this.prisma.category.findUnique({
-          where: { id: +data.categoryId },
+          where: { id: Number(data.categoryId) },
         });
         if (!category) {
           throw new NotFoundException(`Category with ID ${data.categoryId} not found`);
         }
       }
 
+      if (data.assignedToId) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: Number(data.assignedToId) },
+        });
+        if (!user || user.role !== Role.KITCHEN) {
+          throw new NotFoundException(`Kitchen staff with ID ${data.assignedToId} not found`);
+        }
+      }
+
       return await this.prisma.product.update({
         where: { id },
         data: {
-          name: data.name,
-          price: data.price,
-          image: data.image,
-          date: data.date,
+          name: data.name || product.name,
+          price: data.price !== undefined ? data.price : product.price,
+          image: data.image || product.image,
+          date: data.date || product.date,
           category: data.categoryId
-            ? { connect: { id: +data.categoryId } }
+            ? { connect: { id: Number(data.categoryId) } }
             : data.categoryId === null
+            ? { disconnect: true }
+            : undefined,
+          assignedTo: data.assignedToId
+            ? { connect: { id: Number(data.assignedToId) } }
+            : data.assignedToId === null
             ? { disconnect: true }
             : undefined,
         },

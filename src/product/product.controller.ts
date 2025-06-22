@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, NotFoundException, Put } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Put,
+  Param,
+  Delete,
+  UseInterceptors,
+  UploadedFile,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -24,13 +36,12 @@ export class ProductController {
       }),
       fileFilter: (req, file, callback) => {
         if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-          return callback(new Error('Only image files are allowed!'), false);
+          return callback(new BadRequestException('Only image files are allowed!'), false);
         }
         callback(null, true);
       },
     }),
   )
-  
   async create(@Body() createProductDto: CreateProductDto, @UploadedFile() file: Express.Multer.File) {
     if (file) {
       createProductDto.image = `/uploads/products/${file.filename}`;
@@ -62,7 +73,7 @@ export class ProductController {
       }),
       fileFilter: (req, file, callback) => {
         if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-          return callback(new Error('Only image files are allowed!'), false);
+          return callback(new BadRequestException('Only image files are allowed!'), false);
         }
         callback(null, true);
       },
@@ -94,13 +105,13 @@ export class ProductController {
       }),
       fileFilter: (req, file, callback) => {
         if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-          return callback(new Error('Only image files are allowed!'), false);
+          return callback(new BadRequestException('Only image files are allowed!'), false);
         }
         callback(null, true);
       },
     }),
   )
-  async uploadProductImage(@UploadedFile() file: Express.Multer.File) {
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new NotFoundException('No file uploaded');
     }

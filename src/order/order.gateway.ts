@@ -18,7 +18,6 @@ import { UpdateOrderDto } from './dto/update-order.dto';
   },
 })
 @Injectable()
-
 export class OrderGateway {
   @WebSocketServer()
   server: Server;
@@ -114,24 +113,22 @@ export class OrderGateway {
     }
   }
 
-@SubscribeMessage('update_order_status')
-async handleUpdateOrderStatus(@MessageBody() data: { orderId: number; status: OrderStatus }, @ConnectedSocket() client: Socket) {
-  try {
-    const updateOrderDto: UpdateOrderDto = {
-      status: data.status,
-      carrierNumber:''
-      // Omit carrierNumber since it's optional and not provided in the input
-    };
-    const order = await this.orderService.update(data.orderId, updateOrderDto);
-    this.server.emit('orderUpdated', order);
-    client.emit('update_order_status_response', { status: 'ok', order });
-  } catch (error) {
-    client.emit('update_order_status_response', {
-      status: 'error',
-      message: error.message || 'Failed to update order status',
-    });
+  @SubscribeMessage('update_order_status')
+  async handleUpdateOrderStatus(@MessageBody() data: { orderId: number; status: OrderStatus }, @ConnectedSocket() client: Socket) {
+    try {
+      const updateOrderDto: UpdateOrderDto = {
+        status: data.status,
+      };
+      const order = await this.orderService.update(data.orderId, updateOrderDto);
+      this.server.emit('orderUpdated', order);
+      client.emit('update_order_status_response', { status: 'ok', order });
+    } catch (error) {
+      client.emit('update_order_status_response', {
+        status: 'error',
+        message: error.message || 'Failed to update order status',
+      });
+    }
   }
-}
 
   notifyOrderCreated(order: any) {
     this.server.emit('orderCreated', order);
@@ -151,6 +148,12 @@ async handleUpdateOrderStatus(@MessageBody() data: { orderId: number; status: Or
 
   notifyOrderItemDeleted(orderItemId: number) {
     this.server.emit('orderItemDeleted', { id: orderItemId });
+  }
+
+  notifyOrderItemAssigned(orderItem: any) {
+    if (orderItem.product?.assignedTo?.id) {
+      this.server.to(`kitchen-${orderItem.product.assignedTo.id}`).emit('orderItemAssigned', orderItem);
+    }
   }
 
   notifyTableStatusUpdated(table: any) {

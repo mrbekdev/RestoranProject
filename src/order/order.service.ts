@@ -41,10 +41,17 @@ export class OrderService {
     const productIds = Array.from(productMap.keys());
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
+      include: { assignedTo: true },
     });
 
     if (products.length !== productIds.length) {
       throw new NotFoundException('One or more products not found');
+    }
+
+    for (const product of products) {
+      if (!product.assignedTo) {
+        throw new NotFoundException(`No kitchen staff assigned to product ${product.name}`);
+      }
     }
 
     const totalPrice = Array.from(productMap.entries()).reduce((sum, [productId, count]) => {
@@ -55,31 +62,54 @@ export class OrderService {
     const order = await this.prisma.order.create({
       data: {
         table: data.tableId ? { connect: { id: data.tableId } } : undefined,
-        status: data.status || OrderStatus.PENDING,
+        status: OrderStatus.PENDING,
         totalPrice,
         carrierNumber: data.carrierNumber || null,
         user: data.userId ? { connect: { id: data.userId } } : undefined,
-        orderItems: {
-          create: Array.from(productMap.entries()).map(([productId, count]) => ({
-            product: { connect: { id: productId } },
-            count: count,
-            status: OrderItemStatus.PENDING,
-          })),
-        },
       },
+      include: {
+        user: true,
+        table: true,
+      },
+    });
+
+    const orderItems = await Promise.all(
+      Array.from(productMap.entries()).map(async ([productId, count]) => {
+        return this.prisma.orderItem.create({
+          data: {
+            order: { connect: { id: order.id } },
+            product: { connect: { id: productId } },
+            count,
+            status: OrderItemStatus.PENDING,
+          },
+          include: {
+            product: { include: { assignedTo: true } },
+          },
+        });
+      })
+    );
+
+    const completeOrder = await this.prisma.order.findUnique({
+      where: { id: order.id },
       include: {
         user: true,
         table: true,
         orderItems: {
           include: {
-            product: true,
+            product: { include: { assignedTo: true } },
           },
         },
       },
     });
 
-    this.orderGateway.notifyOrderCreated(order);
-    return order;
+    orderItems.forEach((item) => {
+      if (item.product.assignedTo) {
+        this.orderGateway.notifyOrderItemAssigned(item);
+      }
+    });
+
+    this.orderGateway.notifyOrderCreated(completeOrder);
+    return completeOrder;
   }
 
   async findAll() {
@@ -89,7 +119,7 @@ export class OrderService {
         table: true,
         orderItems: {
           include: {
-            product: true,
+            product: { include: { assignedTo: true } },
           },
         },
       },
@@ -104,7 +134,7 @@ export class OrderService {
         table: true,
         orderItems: {
           include: {
-            product: true,
+            product: { include: { assignedTo: true } },
           },
         },
       },
@@ -122,7 +152,7 @@ export class OrderService {
       include: {
         orderItems: {
           include: {
-            product: true,
+            product: { include: { assignedTo: true } },
           },
         },
       },
@@ -162,10 +192,17 @@ export class OrderService {
       const productIds = Array.from(productMap.keys());
       const products = await this.prisma.product.findMany({
         where: { id: { in: productIds } },
+        include: { assignedTo: true },
       });
 
       if (products.length !== productIds.length) {
         throw new NotFoundException('One or more products not found');
+      }
+
+      for (const product of products) {
+        if (!product.assignedTo) {
+          throw new NotFoundException(`No kitchen staff assigned to product ${product.name}`);
+        }
       }
 
       const newItemsPrice = Array.from(productMap.entries()).reduce((sum, [productId, count]) => {
@@ -178,7 +215,7 @@ export class OrderService {
       orderItemsData = {
         create: Array.from(productMap.entries()).map(([productId, count]) => ({
           product: { connect: { id: productId } },
-          count: count,
+          count,
           status: OrderItemStatus.PENDING,
         })),
       };
@@ -199,14 +236,20 @@ export class OrderService {
         table: true,
         orderItems: {
           include: {
-            product: true,
+            product: { include: { assignedTo: true } },
           },
         },
       },
     });
 
     if (data.products) {
-      await this.updateOrderStatusIfAllItemsReady(id); // Correct call to private method
+      await this.updateOrderStatusIfAllItemsReady(id);
+      const newOrderItems = updatedOrder.orderItems.filter(item => item.status === OrderItemStatus.PENDING);
+      newOrderItems.forEach((item) => {
+        if (item.product.assignedTo) {
+          this.orderGateway.notifyOrderItemAssigned(item);
+        }
+      });
     }
 
     this.orderGateway.notifyOrderUpdated(updatedOrder);
@@ -218,7 +261,7 @@ export class OrderService {
       where: { id: orderItemId },
       include: {
         order: true,
-        product: true,
+        product: { include: { assignedTo: true } },
       },
     });
 
@@ -233,7 +276,7 @@ export class OrderService {
         preparedAt: status === OrderItemStatus.READY ? new Date() : null,
       },
       include: {
-        product: true,
+        product: { include: { assignedTo: true } },
         order: true,
       },
     });
@@ -263,7 +306,7 @@ export class OrderService {
           table: true,
           orderItems: {
             include: {
-              product: true,
+              product: { include: { assignedTo: true } },
             },
           },
         },
@@ -278,7 +321,7 @@ export class OrderService {
           table: true,
           orderItems: {
             include: {
-              product: true,
+              product: { include: { assignedTo: true } },
             },
           },
         },
@@ -293,7 +336,7 @@ export class OrderService {
           table: true,
           orderItems: {
             include: {
-              product: true,
+              product: { include: { assignedTo: true } },
             },
           },
         },
@@ -319,7 +362,7 @@ export class OrderService {
             },
           },
           include: {
-            product: true,
+            product: { include: { assignedTo: true } },
           },
         },
       },
@@ -332,7 +375,7 @@ export class OrderService {
         status: OrderItemStatus.READY,
       },
       include: {
-        product: true,
+        product: { include: { assignedTo: true } },
         order: {
           include: {
             user: true,

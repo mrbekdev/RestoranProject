@@ -11,6 +11,6 @@ async function bootstrap() {
   // Static fayllarni xizmat qilish
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
-  await app.listen(4000);
+  await app.listen(3000);
 }
 bootstrap();
