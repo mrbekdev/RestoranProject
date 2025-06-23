@@ -14,9 +14,9 @@ export class UserService {
     if (user) {
       throw new BadRequestException('User alredy exist');
     }
-    const hashPassword = await hash(data.password, 10);
+
     return await this.prisma.user.create({
-      data: { ...data, password: hashPassword, role: data.role,phone: data.phone },
+      data: { ...data, role: data.role,phone: data.phone,password:data.password },
     });
   }
 

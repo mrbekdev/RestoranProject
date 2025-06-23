@@ -5,10 +5,9 @@ import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    cors: true, // CORS ni barcha uchun ochiq qilish
+    cors: true,
   });
 
-  // Static fayllarni xizmat qilish
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
   await app.listen(3000);

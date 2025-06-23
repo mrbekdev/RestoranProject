@@ -81,7 +81,7 @@ export class ProductController {
   )
   async update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto, @UploadedFile() file: Express.Multer.File) {
     if (file) {
-      updateProductDto.image = `/uploads/products/${file.filename}`;
+      updateProductDto.image = `/Uploads/products/${file.filename}`;
     }
     return this.productService.update(+id, updateProductDto);
   }
@@ -117,7 +117,7 @@ export class ProductController {
     }
     return {
       message: 'File uploaded successfully',
-      filePath: `/uploads/products/${file.filename}`,
+      filePath: `/Uploads/products/${file.filename}`,
     };
   }
 }
