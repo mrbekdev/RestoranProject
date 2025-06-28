@@ -83,6 +83,11 @@ model Percent {
   createdAt DateTime @default(now())
 }
 
+model AuthCheck{
+  id        Int      @id @default(autoincrement())
+  status Boolean? @default(false)
+}
+
 enum Role {
   CUSTOMER
   CASHIER

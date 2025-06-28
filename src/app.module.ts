@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { TableModule } from './table/table.module';
 import { OrderGateway } from './order/order.gateway';
 import { PercentModule } from './percent/percent.module';
+import { AuthCheckModule } from './auth-check/auth-check.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PercentModule } from './percent/percent.module';
     OrderModule,
     TableModule,
     PercentModule,
+    AuthCheckModule,
   ],
   controllers: [AppController],
   providers: [AppService],
