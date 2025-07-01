@@ -5,4 +5,5 @@ export class CreateProductDto {
   date?: string;
   categoryId?: number;
   assignedToId?: number;
+  index?: string;
 }
