@@ -144,4 +144,40 @@ export class ProductService {
       where: { id },
     });
   }
+
+  async swapIndices(id1: number, id2: number) {
+    try {
+      const product1 = await this.prisma.product.findUnique({
+        where: { id: id1 },
+      });
+      const product2 = await this.prisma.product.findUnique({
+        where: { id: id2 },
+      });
+
+      if (!product1 || !product2) {
+        throw new NotFoundException(`One or both products not found`);
+      }
+
+      const index1 = product1.index;
+      const index2 = product2.index;
+
+      await this.prisma.$transaction([
+        this.prisma.product.update({
+          where: { id: id1 },
+          data: { index: index2 },
+        }),
+        this.prisma.product.update({
+          where: { id: id2 },
+          data: { index: index1 },
+        }),
+      ]);
+
+      return { message: `Indices of products ${id1} and ${id2} swapped successfully` };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to swap product indices: ' + error.message);
+    }
+  }
 }

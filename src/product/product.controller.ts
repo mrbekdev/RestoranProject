@@ -81,7 +81,7 @@ export class ProductController {
   )
   async update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto, @UploadedFile() file: Express.Multer.File) {
     if (file) {
-      updateProductDto.image = `/Uploads/products/${file.filename}`;
+      updateProductDto.image = `/uploads/products/${file.filename}`;
     }
     return this.productService.update(+id, updateProductDto);
   }
@@ -117,7 +117,13 @@ export class ProductController {
     }
     return {
       message: 'File uploaded successfully',
-      filePath: `/Uploads/products/${file.filename}`,
+      filePath: `/uploads/products/${file.filename}`,
     };
+  }
+
+  @Post('swap-indices')
+  async swapIndices(@Body() body: { id1: number; id2: number }) {
+    const { id1, id2 } = body;
+    return this.productService.swapIndices(id1, id2);
   }
 }
