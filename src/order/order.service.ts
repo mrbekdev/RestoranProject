@@ -66,6 +66,7 @@ export class OrderService {
         totalPrice,
         carrierNumber: data.carrierNumber || null,
         user: data.userId ? { connect: { id: data.userId } } : undefined,
+        uslug: data.uslug || null,
       },
       include: {
         user: true,
@@ -229,6 +230,7 @@ export class OrderService {
         carrierNumber: data.carrierNumber !== undefined ? data.carrierNumber : order.carrierNumber,
         totalPrice,
         user: data.userId ? { connect: { id: data.userId } } : undefined,
+        uslug: data.uslug !== undefined ? data.uslug : order.uslug,
         orderItems: orderItemsData,
       },
       include: {

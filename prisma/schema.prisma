@@ -30,7 +30,6 @@ model Product {
   categoryId  Int?
   assignedTo  User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
   index String?
-  uslug String?
   assignedToId Int?
   createdAt   DateTime  @default(now())
   orderItems  OrderItem[]
@@ -62,6 +61,7 @@ model Order {
   totalPrice    Int
   user          User?       @relation(fields: [userId], references: [id])
   userId        Int?
+  uslug Float?
   carrierNumber String?
   createdAt     DateTime    @default(now())
   orderItems    OrderItem[]

@@ -38,4 +38,8 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsString()
   carrierNumber?: string;
+
+  @IsOptional()
+
+  uslug?: number;
 }

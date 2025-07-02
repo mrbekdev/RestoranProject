@@ -4,4 +4,5 @@ export class CreateOrderDto {
   carrierNumber?: string;
   status?: string;
   products: { productId: number; count: number }[];
+  uslug?: number;
 }
