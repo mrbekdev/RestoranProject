@@ -93,42 +93,26 @@ export default function TaomlarSoz() {
         throw new Error("JWT token not found in localStorage");
       }
 
-      console.log("Fetching menu with token:", token.substring(0, 10) + "...");
       const res = await axios.get("https://alikafecrm.uz/product", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      console.log("Fetched menu response:", res.data);
 
       if (!Array.isArray(res.data)) {
         throw new Error("Expected an array from API, received: " + JSON.stringify(res.data));
       }
 
       const sortedMenu = res.data
-        .map((item, idx) => {
-          if (!item || typeof item !== "object") {
-            console.warn(`Invalid item at index ${idx}:`, item);
-            return null;
-          }
-          return {
-            ...item,
-            id: Number(item.id) || 0,
-            categoryId: item.categoryId ? Number(item.categoryId) : null,
-            index: item.index || String(idx + 1), // Agar index null bo'lsa, standart qiymat
-          };
-        })
-        .filter((item) => item !== null)
-        .sort((a, b) => parseInt(a.index || "0") - parseInt(b.index || "0")); // index bo'yicha son sifatida tartiblash
+        .map((item) => ({
+          ...item,
+          id: Number(item.id) || 0,
+          categoryId: item.categoryId ? Number(item.categoryId) : null,
+          index: item.index || "0", // Default index sifatida "0" ishlatamiz
+        }))
+        .sort((a, b) => parseInt(a.index) - parseInt(b.index));
 
-      console.log("Processed menu:", sortedMenu);
       setMenu(sortedMenu);
     } catch (err) {
-      console.error("Менюни юклашда хатолик:", {
-        message: err.message,
-        status: err.response?.status,
-        data: err.response?.data,
-        stack: err.stack,
-      });
+      console.error("Менюни юклашда хатолик:", err);
       alert(`Менюни юклашда хатолик: ${err.response?.data?.message || err.message}`);
     } finally {
       setLoading(false);
@@ -141,7 +125,6 @@ export default function TaomlarSoz() {
       const res = await axios.get("https://alikafecrm.uz/category", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      console.log("Fetched categories:", res.data);
       const categories = res.data.map((cat) => ({
         ...cat,
         id: Number(cat.id),
@@ -164,7 +147,6 @@ export default function TaomlarSoz() {
       const res = await axios.get("https://alikafecrm.uz/user?role=KITCHEN", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      console.log("Fetched kitchen staff:", res.data);
       setKitchenStaff(
         res.data.map((user) => ({
           ...user,
@@ -230,8 +212,6 @@ export default function TaomlarSoz() {
       formData.append("image", dishes.image);
     }
 
-    console.log("FormData:", Object.fromEntries(formData));
-
     try {
       const request = editing
         ? axios.put(`https://alikafecrm.uz/product/${Number(dishes.id)}`, formData, {
@@ -247,8 +227,7 @@ export default function TaomlarSoz() {
             },
           });
 
-      const response = await request;
-      console.log("Response:", response.data);
+      await request;
       await fetchMenu();
       setShowModal(false);
       setEditing(false);
@@ -256,15 +235,7 @@ export default function TaomlarSoz() {
       alert("Таом муваффақиятли қўшилди!");
     } catch (err) {
       console.error(`${editing ? "Таҳрирлашда" : "Қўшишда"} хатолик:`, err);
-      let errorMessage = "Номаълум хатолик";
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.response?.data?.error) {
-        errorMessage = err.response.data.error;
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      alert(`Хатолик: ${errorMessage}`);
+      alert(`Хатолик: ${err.response?.data?.message || err.message}`);
     }
   };
 
@@ -321,19 +292,18 @@ export default function TaomlarSoz() {
       return;
     }
 
-    const activeIndex = filteredMenu.findIndex((item) => String(item.id) === String(active.id));
-    const overIndex = filteredMenu.findIndex((item) => String(item.id) === String(over.id));
+    const activeIndex = menu.findIndex((item) => String(item.id) === String(active.id));
+    const overIndex = menu.findIndex((item) => String(item.id) === String(over.id));
 
     if (activeIndex === -1 || overIndex === -1) {
       console.error("Invalid active or over index");
       return;
     }
 
-    const activeItem = filteredMenu[activeIndex];
-    const overItem = filteredMenu[overIndex];
+    const activeItem = menu[activeIndex];
+    const overItem = menu[overIndex];
 
     try {
-      // Backendga indekslarni almashtirish so'rovi
       await axios.post(
         "https://alikafecrm.uz/product/swap-indices",
         { id1: Number(activeItem.id), id2: Number(overItem.id) },
@@ -341,19 +311,16 @@ export default function TaomlarSoz() {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
       );
-
-      // Backenddan yangi ma'lumotlarni olish
       await fetchMenu();
       console.log("Indices swapped successfully");
     } catch (err) {
       console.error("Indekslarni almashtirishda xatolik:", err);
       alert(`Indekslarni almashtirishda xatolik: ${err.response?.data?.message || err.message}`);
-      // Xato yuz bersa, eski holatni tiklash uchun menyuni qayta yuklash
-      await fetchMenu();
+      await fetchMenu(); // Xatolik bo'lganda holatni tiklash
     }
   };
 
-  const SortableItem = ({ item, index }) => {
+  const SortableItem = ({ item }) => {
     const {
       attributes,
       listeners,
@@ -428,10 +395,9 @@ export default function TaomlarSoz() {
   };
 
   const filteredMenu = newCategory
-    ? menu
-        .filter((item) => item.category?.name === newCategory)
-        .sort((a, b) => parseInt(a.index || "0") - parseInt(b.index || "0"))
-    : menu.sort((a, b) => parseInt(a.index || "0") - parseInt(b.index || "0"));
+    ? menu.filter((item) => item.category?.name === newCategory)
+    : [...menu];
+  const sortedMenu = filteredMenu.sort((a, b) => parseInt(a.index) - parseInt(b.index));
 
   const formatPrice = (price) => {
     const priceStr = price.toString();
@@ -502,9 +468,7 @@ export default function TaomlarSoz() {
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext
-              items={filteredMenu.map((item) => String(item.id))}
-            >
+            <SortableContext items={sortedMenu.map((item) => String(item.id))}>
               <div className="food-grid">
                 <article
                   className="add-food-card"
@@ -520,7 +484,7 @@ export default function TaomlarSoz() {
                   <h3 className="add-food-text">Таом қўшиш</h3>
                 </article>
 
-                {filteredMenu.length === 0 ? (
+                {sortedMenu.length === 0 ? (
                   <div
                     className="empty-state"
                     style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px" }}
@@ -534,8 +498,8 @@ export default function TaomlarSoz() {
                     </p>
                   </div>
                 ) : (
-                  filteredMenu.map((item, index) => (
-                    <SortableItem key={item.id} item={item} index={index} />
+                  sortedMenu.map((item) => (
+                    <SortableItem key={item.id} item={item} />
                   ))
                 )}
               </div>
@@ -619,9 +583,7 @@ export default function TaomlarSoz() {
                       const file = e.target.files[0];
                       if (file) {
                         try {
-                          console.log("Asl fayl:", file.name, file.type);
                           const jpgFile = await convertToJPG(file);
-                          console.log("JPG ga aylantirildi:", jpgFile.name, jpgFile.type);
                           setDishes({ ...dishes, image: jpgFile });
                         } catch (error) {
                           console.error("Rasm konvertatsiya qilishda xatolik:", error);
@@ -639,13 +601,12 @@ export default function TaomlarSoz() {
                   <select
                     className="form-control"
                     value={dishes.categoryId || ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
+                    onChange={(e) =>
                       setDishes({
                         ...dishes,
-                        categoryId: val === "" ? null : Number(val),
-                      });
-                    }}
+                        categoryId: e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
                   >
                     <option value="">Категория танланг</option>
                     {categoryList.map((cat) => (
@@ -660,13 +621,12 @@ export default function TaomlarSoz() {
                   <select
                     className="form-control"
                     value={dishes.assignedToId || ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
+                    onChange={(e) =>
                       setDishes({
                         ...dishes,
-                        assignedToId: val === "" ? null : Number(val),
-                      });
-                    }}
+                        assignedToId: e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
                   >
                     <option value="">Ошпаз танланг (авто-танлов)</option>
                     {kitchenStaff
@@ -695,7 +655,7 @@ export default function TaomlarSoz() {
                     <label className="form-label">Янги категория номи</label>
                     <input
                       type="text"
-                      placeholder="Янги категория номи"
+                      placeholder="Янги категория номi"
                       className="form-control"
                       value={newCategory}
                       onChange={(e) => setNewCategory(e.target.value)}
@@ -716,7 +676,6 @@ export default function TaomlarSoz() {
                             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
                           }
                         );
-                        console.log("New category added:", res.data);
                         const newCat = { ...res.data, id: Number(res.data.id) };
                         setCategoryList((prev) => [...prev, newCat]);
                         setDishes((prev) => ({

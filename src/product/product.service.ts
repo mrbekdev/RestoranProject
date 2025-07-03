@@ -36,14 +36,11 @@ export class ProductService {
         data.assignedToId = kitchenStaff[Math.floor(Math.random() * kitchenStaff.length)].id;
       }
 
-      // Index uchun oxirgi mahsulotning index qiymatini olish va xavfsiz hisoblash
+      // Index uchun oxirgi mahsulotning index qiymatini xavfsiz olish
       const lastProduct = await this.prisma.product.findFirst({
         orderBy: { index: 'desc' },
       });
- const newIndex = lastProduct && lastProduct.index !== null
-  ? String(parseInt(lastProduct.index) + 1)
-  : '1';
-
+      const newIndex = lastProduct ? String(parseInt(lastProduct.index || '0') + 1) : '1';
 
       return await this.prisma.product.create({
         data: {
@@ -51,7 +48,7 @@ export class ProductService {
           price: data.price,
           image: data.image || null,
           date: data.date || null,
-          index: newIndex, // Yangi index qo'shildi
+          index: newIndex,
           category: data.categoryId ? { connect: { id: Number(data.categoryId) } } : undefined,
           assignedTo: data.assignedToId ? { connect: { id: Number(data.assignedToId) } } : undefined,
         },
@@ -70,7 +67,7 @@ export class ProductService {
         category: true,
         assignedTo: true,
       },
-      orderBy: { index: 'asc' }, // index bo'yicha tartiblash
+      orderBy: { index: 'asc' },
     });
   }
 

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { OrderStatus, OrderItemStatus } from '@prisma/client';
+import { OrderStatus, OrderItemStatus, TableStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderGateway } from './order.gateway';
 
@@ -102,6 +102,15 @@ export class OrderService {
         },
       },
     });
+
+    // Update table status to OCCUPIED if tableId is provided
+    if (data.tableId) {
+      const updatedTable = await this.prisma.table.update({
+        where: { id: data.tableId },
+        data: { status: TableStatus.busy },
+      });
+      this.orderGateway.notifyTableStatusUpdated(updatedTable);
+    }
 
     orderItems.forEach((item) => {
       if (item.product.assignedTo) {
@@ -391,6 +400,7 @@ export class OrderService {
   async remove(id: number) {
     const order = await this.prisma.order.findUnique({
       where: { id },
+      include: { table: true },
     });
     if (!order) {
       throw new NotFoundException('Order not found');
@@ -403,6 +413,27 @@ export class OrderService {
     const deletedOrder = await this.prisma.order.delete({
       where: { id },
     });
+
+    // Check if the table has other active orders
+    if (order.tableId) {
+      const remainingOrders = await this.prisma.order.count({
+        where: {
+          tableId: order.tableId,
+          status: {
+            in: [OrderStatus.PENDING, OrderStatus.COOKING, OrderStatus.READY],
+          },
+        },
+      });
+
+      // If no active orders remain, set table status to FREE
+      if (remainingOrders === 0) {
+        const updatedTable = await this.prisma.table.update({
+          where: { id: order.tableId },
+          data: { status: TableStatus.empty },
+        });
+        this.orderGateway.notifyTableStatusUpdated(updatedTable);
+      }
+    }
 
     this.orderGateway.notifyOrderDeleted(id);
     return deletedOrder;
