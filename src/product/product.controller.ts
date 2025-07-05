@@ -126,4 +126,10 @@ export class ProductController {
     const { id1, id2 } = body;
     return this.productService.swapIndices(id1, id2);
   }
+
+  @Post('swap-ids')
+  async swapIds(@Body() body: { id1: number; id2: number }) {
+    const { id1, id2 } = body;
+    return this.productService.swapIds(id1, id2);
+  }
 }

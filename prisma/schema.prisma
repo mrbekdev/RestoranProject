@@ -29,7 +29,6 @@ model Product {
   category    Category? @relation(fields: [categoryId], references: [id])
   categoryId  Int?
   assignedTo  User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
-  index       String?   @default("") 
   assignedToId Int? @default(0)
   createdAt   DateTime  @default(now())
   orderItems  OrderItem[]

@@ -188,4 +188,60 @@ export class ProductService {
       throw new BadRequestException('Failed to swap product indices: ' + error.message);
     }
   }
+
+  async swapIds(id1: number, id2: number) {
+    try {
+      const product1 = await this.prisma.product.findUnique({
+        where: { id: id1 },
+        include: {
+          category: true,
+          assignedTo: true,
+          orderItems: true,
+        },
+      });
+      const product2 = await this.prisma.product.findUnique({
+        where: { id: id2 },
+        include: {
+          category: true,
+          assignedTo: true,
+          orderItems: true,
+        },
+      });
+
+      if (!product1 || !product2) {
+        throw new NotFoundException(`One or both products not found`);
+      }
+
+
+      const tempId = -(Math.max(id1, id2) + 1); 
+
+      await this.prisma.$transaction([
+        this.prisma.product.update({
+          where: { id: id1 },
+          data: {
+            id: tempId,
+          },
+        }),
+        this.prisma.product.update({
+          where: { id: id2 },
+          data: {
+            id: id1,
+          },
+        }),
+        this.prisma.product.update({
+          where: { id: tempId },
+          data: {
+            id: id2,
+          },
+        }),
+      ]);
+
+      return { message: `IDs of products ${id1} and ${id2} swapped successfully` };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to swap product IDs: ' + error.message);
+    }
+  }
 }
