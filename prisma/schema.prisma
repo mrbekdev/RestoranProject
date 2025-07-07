@@ -28,6 +28,7 @@ model Product {
   date        String?
   category    Category? @relation(fields: [categoryId], references: [id])
   categoryId  Int?
+  index Int?
   assignedTo  User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
   assignedToId Int? @default(0)
   createdAt   DateTime  @default(now())

@@ -36,28 +36,51 @@ export class ProductService {
         data.assignedToId = kitchenStaff[Math.floor(Math.random() * kitchenStaff.length)].id;
       }
 
-      // Index uchun oxirgi mahsulotning index qiymatini xavfsiz olish
-      const lastProduct = await this.prisma.product.findFirst({
-        orderBy: { index: 'desc' },
-      });
-      const newIndex = lastProduct ? String(parseInt(lastProduct.index || '0') + 1) : '1';
-
+      // Create product and set index equal to the auto-incremented id
       return await this.prisma.product.create({
         data: {
           name: data.name,
           price: data.price,
           image: data.image || null,
           date: data.date || null,
-          index: newIndex,
+          index: undefined, // Let Prisma handle id auto-increment, we'll set index = id after creation
           category: data.categoryId ? { connect: { id: Number(data.categoryId) } } : undefined,
           assignedTo: data.assignedToId ? { connect: { id: Number(data.assignedToId) } } : undefined,
         },
+      }).then(async (product) => {
+        // Update the index to match the id after creation
+        return await this.prisma.product.update({
+          where: { id: product.id },
+          data: { index: +product.id },
+        });
       });
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
       }
       throw new BadRequestException('Failed to create product: ' + error.message);
+    }
+  }
+
+  async syncIndicesWithIds() {
+    try {
+      const products = await this.prisma.product.findMany();
+      if (!products.length) {
+        return { message: 'No products found to synchronize' };
+      }
+
+      const updates = products.map((product) =>
+        this.prisma.product.update({
+          where: { id: product.id },
+          data: { index: product.id },
+        }),
+      );
+
+      await this.prisma.$transaction(updates);
+
+      return { message: `Synchronized indices with IDs for ${products.length} products` };
+    } catch (error) {
+      throw new BadRequestException('Failed to synchronize product indices: ' + error.message);
     }
   }
 
@@ -153,34 +176,31 @@ export class ProductService {
     });
   }
 
-  async swapIndices(id1: number, id2: number) {
+  async swapIndices(index1: number, index2: number) {
     try {
-      const product1 = await this.prisma.product.findUnique({
-        where: { id: id1 },
+      const product1 = await this.prisma.product.findFirst({
+        where: { index: index1 },
       });
-      const product2 = await this.prisma.product.findUnique({
-        where: { id: id2 },
+      const product2 = await this.prisma.product.findFirst({
+        where: { index: index2 },
       });
 
       if (!product1 || !product2) {
-        throw new NotFoundException(`One or both products not found`);
+        throw new NotFoundException(`One or both products with indices ${index1} or ${index2} not found`);
       }
-
-      const index1 = product1.index;
-      const index2 = product2.index;
 
       await this.prisma.$transaction([
         this.prisma.product.update({
-          where: { id: id1 },
+          where: { id: product1.id },
           data: { index: index2 },
         }),
         this.prisma.product.update({
-          where: { id: id2 },
+          where: { id: product2.id },
           data: { index: index1 },
         }),
       ]);
 
-      return { message: `Indices of products ${id1} and ${id2} swapped successfully` };
+      return { message: `Indices ${index1} and ${index2} swapped successfully` };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -212,31 +232,33 @@ export class ProductService {
         throw new NotFoundException(`One or both products not found`);
       }
 
-
-      const tempId = -(Math.max(id1, id2) + 1); 
+      const tempId = -(Math.max(id1, id2) + 1);
 
       await this.prisma.$transaction([
         this.prisma.product.update({
           where: { id: id1 },
           data: {
             id: tempId,
+            index: tempId, // Update index to match the temporary ID
           },
         }),
         this.prisma.product.update({
           where: { id: id2 },
           data: {
             id: id1,
+            index: id1, // Update index to match the new ID
           },
         }),
         this.prisma.product.update({
           where: { id: tempId },
           data: {
             id: id2,
+            index: id2, // Update index to match the new ID
           },
         }),
       ]);
 
-      return { message: `IDs of products ${id1} and ${id2} swapped successfully` };
+      return { message: `IDs and indices of products ${id1} and ${id2} swapped successfully` };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;

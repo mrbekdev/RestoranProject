@@ -122,14 +122,19 @@ export class ProductController {
   }
 
   @Post('swap-indices')
-  async swapIndices(@Body() body: { id1: number; id2: number }) {
-    const { id1, id2 } = body;
-    return this.productService.swapIndices(id1, id2);
+  async swapIndices(@Body() body: { index1: number; index2: number }) {
+    const { index1, index2 } = body;
+    return this.productService.swapIndices(index1, index2);
   }
 
   @Post('swap-ids')
   async swapIds(@Body() body: { id1: number; id2: number }) {
     const { id1, id2 } = body;
     return this.productService.swapIds(id1, id2);
+  }
+
+  @Post('sync-indices')
+  async syncIndices() {
+    return this.productService.syncIndicesWithIds();
   }
 }
