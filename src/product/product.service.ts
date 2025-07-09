@@ -36,19 +36,18 @@ export class ProductService {
         data.assignedToId = kitchenStaff[Math.floor(Math.random() * kitchenStaff.length)].id;
       }
 
-      // Create product and set index equal to the auto-incremented id
       return await this.prisma.product.create({
         data: {
           name: data.name,
           price: data.price,
           image: data.image || null,
           date: data.date || null,
-          index: undefined, // Let Prisma handle id auto-increment, we'll set index = id after creation
+          index: undefined,
+          isFinished: data.isFinished || false,
           category: data.categoryId ? { connect: { id: Number(data.categoryId) } } : undefined,
           assignedTo: data.assignedToId ? { connect: { id: Number(data.assignedToId) } } : undefined,
         },
       }).then(async (product) => {
-        // Update the index to match the id after creation
         return await this.prisma.product.update({
           where: { id: product.id },
           data: { index: +product.id },
@@ -143,7 +142,7 @@ export class ProductService {
           price: data.price !== undefined ? data.price : product.price,
           image: data.image || product.image,
           date: data.date || product.date,
-          isFinished:data?.isFinished,
+          isFinished: data.isFinished !== undefined ? data.isFinished : product.isFinished,
           category: data.categoryId
             ? { connect: { id: Number(data.categoryId) } }
             : data.categoryId === null
@@ -240,21 +239,21 @@ export class ProductService {
           where: { id: id1 },
           data: {
             id: tempId,
-            index: tempId, // Update index to match the temporary ID
+            index: tempId,
           },
         }),
         this.prisma.product.update({
           where: { id: id2 },
           data: {
             id: id1,
-            index: id1, // Update index to match the new ID
+            index: id1,
           },
         }),
         this.prisma.product.update({
           where: { id: tempId },
           data: {
             id: id2,
-            index: id2, // Update index to match the new ID
+            index: id2,
           },
         }),
       ]);

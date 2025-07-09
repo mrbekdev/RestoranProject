@@ -20,7 +20,7 @@ import { extname } from 'path';
 
 @Controller('product')
 export class ProductController {
-  constructor(private readonly productService: ProductService) { }
+  constructor(private readonly productService: ProductService) {}
 
   @Post()
   @UseInterceptors(
@@ -65,7 +65,7 @@ export class ProductController {
       storage: diskStorage({
         destination: './uploads/products',
         filename: (req, file, callback) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix= Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
           const filename = `${file.fieldname}-${uniqueSuffix}${ext}`;
           callback(null, filename);
@@ -120,6 +120,7 @@ export class ProductController {
       filePath: `/uploads/products/${file.filename}`,
     };
   }
+
   @Post('sync-indices')
   async syncIndices() {
     return this.productService.syncIndicesWithIds();
@@ -136,6 +137,4 @@ export class ProductController {
     const { id1, id2 } = body;
     return this.productService.swapIds(id1, id2);
   }
-
-
 }
