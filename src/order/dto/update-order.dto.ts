@@ -10,6 +10,10 @@ class OrderProductDto {
   @IsInt()
   @Min(1)
   count: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 }
 
 export class UpdateOrderDto {
@@ -40,6 +44,6 @@ export class UpdateOrderDto {
   carrierNumber?: string;
 
   @IsOptional()
-
+  @IsInt()
   uslug?: number;
 }

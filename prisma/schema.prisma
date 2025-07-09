@@ -29,6 +29,7 @@ model Product {
   category    Category? @relation(fields: [categoryId], references: [id])
   categoryId  Int?
   index Int?
+  isFinished Boolean @default(false)
   assignedTo  User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
   assignedToId Int? @default(0)
   createdAt   DateTime  @default(now())
@@ -74,6 +75,7 @@ model OrderItem {
   product    Product         @relation(fields: [productId], references: [id])
   productId  Int
   count      Int
+  description String?        @default("")
   status     OrderItemStatus @default(PENDING)
   preparedAt DateTime?
   createdAt  DateTime        @default(now())

@@ -20,7 +20,7 @@ import { extname } from 'path';
 
 @Controller('product')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(private readonly productService: ProductService) { }
 
   @Post()
   @UseInterceptors(
@@ -120,6 +120,10 @@ export class ProductController {
       filePath: `/uploads/products/${file.filename}`,
     };
   }
+  @Post('sync-indices')
+  async syncIndices() {
+    return this.productService.syncIndicesWithIds();
+  }
 
   @Post('swap-indices')
   async swapIndices(@Body() body: { index1: number; index2: number }) {
@@ -133,8 +137,5 @@ export class ProductController {
     return this.productService.swapIds(id1, id2);
   }
 
-  @Post('sync-indices')
-  async syncIndices() {
-    return this.productService.syncIndicesWithIds();
-  }
+
 }

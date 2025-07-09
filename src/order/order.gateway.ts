@@ -107,7 +107,7 @@ export class OrderGateway {
       client.emit('update_order_item_status_response', { status: 'ok', orderItem });
     } catch (error) {
       client.emit('update_order_item_status_response', {
-        status: 'error',
+        status: 'error trackbac',
         message: error.message || 'Failed to update order item status',
       });
     }

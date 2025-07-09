@@ -32,10 +32,13 @@ export class OrderService {
       }
     }
 
-    const productMap = new Map<number, number>();
+    const productMap = new Map<number, { count: number; description?: string }>();
     data.products.forEach((item) => {
-      const existingCount = productMap.get(item.productId) || 0;
-      productMap.set(item.productId, existingCount + item.count);
+      const existing = productMap.get(item.productId) || { count: 0, description: item.description };
+      productMap.set(item.productId, {
+        count: existing.count + item.count,
+        description: item.description || existing.description,
+      });
     });
 
     const productIds = Array.from(productMap.keys());
@@ -54,7 +57,7 @@ export class OrderService {
       }
     }
 
-    const totalPrice = Array.from(productMap.entries()).reduce((sum, [productId, count]) => {
+    const totalPrice = Array.from(productMap.entries()).reduce((sum, [productId, { count }]) => {
       const product = products.find((p) => p.id === productId);
       return sum + Number(product?.price) * count;
     }, 0);
@@ -75,12 +78,13 @@ export class OrderService {
     });
 
     const orderItems = await Promise.all(
-      Array.from(productMap.entries()).map(async ([productId, count]) => {
+      Array.from(productMap.entries()).map(async ([productId, { count, description }]) => {
         return this.prisma.orderItem.create({
           data: {
             order: { connect: { id: order.id } },
             product: { connect: { id: productId } },
             count,
+            description: description || null,
             status: OrderItemStatus.PENDING,
           },
           include: {
@@ -103,7 +107,6 @@ export class OrderService {
       },
     });
 
-    // Update table status to OCCUPIED if tableId is provided
     if (data.tableId) {
       const updatedTable = await this.prisma.table.update({
         where: { id: data.tableId },
@@ -193,10 +196,13 @@ export class OrderService {
     let orderItemsData;
 
     if (data.products) {
-      const productMap = new Map<number, number>();
+      const productMap = new Map<number, { count: number; description?: string }>();
       data.products.forEach((item) => {
-        const existingCount = productMap.get(item.productId) || 0;
-        productMap.set(item.productId, existingCount + item.count);
+        const existing = productMap.get(item.productId) || { count: 0, description: item.description };
+        productMap.set(item.productId, {
+          count: existing.count + item.count,
+          description: item.description || existing.description,
+        });
       });
 
       const productIds = Array.from(productMap.keys());
@@ -215,7 +221,7 @@ export class OrderService {
         }
       }
 
-      const newItemsPrice = Array.from(productMap.entries()).reduce((sum, [productId, count]) => {
+      const newItemsPrice = Array.from(productMap.entries()).reduce((sum, [productId, { count }]) => {
         const product = products.find((p) => p.id === productId);
         return sum + Number(product?.price) * count;
       }, 0);
@@ -223,9 +229,10 @@ export class OrderService {
       totalPrice = order.totalPrice + newItemsPrice;
 
       orderItemsData = {
-        create: Array.from(productMap.entries()).map(([productId, count]) => ({
+        create: Array.from(productMap.entries()).map(([productId, { count, description }]) => ({
           product: { connect: { id: productId } },
           count,
+          description: description || null,
           status: OrderItemStatus.PENDING,
         })),
       };
@@ -414,7 +421,6 @@ export class OrderService {
       where: { id },
     });
 
-    // Check if the table has other active orders
     if (order.tableId) {
       const remainingOrders = await this.prisma.order.count({
         where: {
@@ -425,7 +431,6 @@ export class OrderService {
         },
       });
 
-      // If no active orders remain, set table status to FREE
       if (remainingOrders === 0) {
         const updatedTable = await this.prisma.table.update({
           where: { id: order.tableId },

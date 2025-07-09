@@ -1,11 +1,7 @@
-import { IsInt, IsString, IsEnum, IsArray, ValidateNested, Min, IsOptional } from 'class-validator';
-import { Type } from 'class-transformer';
-import { OrderStatus } from '@prisma/client';
+import { IsInt, Min } from 'class-validator';
 
-export class selectTable {
+export class SelectTableDto {
   @IsInt()
   @Min(1)
   tableId: number;
-
-
 }

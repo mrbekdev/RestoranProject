@@ -143,6 +143,7 @@ export class ProductService {
           price: data.price !== undefined ? data.price : product.price,
           image: data.image || product.image,
           date: data.date || product.date,
+          isFinished:data?.isFinished,
           category: data.categoryId
             ? { connect: { id: Number(data.categoryId) } }
             : data.categoryId === null

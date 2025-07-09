@@ -6,4 +6,5 @@ export class CreateProductDto {
   categoryId?: number;
   assignedToId?: number;
   index?: string;
+  isFinished?: boolean;
 }
