@@ -248,6 +248,7 @@ export class OrderService {
         user: data.userId ? { connect: { id: data.userId } } : undefined,
         uslug: data.uslug !== undefined ? data.uslug : order.uslug,
         orderItems: orderItemsData,
+        endTime:data.endTime
       },
       include: {
         user: true,

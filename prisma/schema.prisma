@@ -62,6 +62,7 @@ model Order {
   totalPrice    Int
   user          User?       @relation(fields: [userId], references: [id])
   userId        Int?
+  endTime String?
   uslug Float?
   carrierNumber String?
   createdAt     DateTime    @default(now())

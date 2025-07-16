@@ -42,6 +42,9 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsString()
   carrierNumber?: string;
+  @IsOptional()
+  @IsString()
+  endTime?: string;
 
   @IsOptional()
   @IsInt()
