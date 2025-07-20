@@ -30,6 +30,7 @@ model Product {
   categoryId  Int?
   index Int?
   isFinished Boolean @default(false)
+  isCompleted Boolean @default(false)
   assignedTo  User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
   assignedToId Int? @default(0)
   createdAt   DateTime  @default(now())

@@ -46,6 +46,7 @@ export class ProductService {
           isFinished: data.isFinished || false,
           category: data.categoryId ? { connect: { id: Number(data.categoryId) } } : undefined,
           assignedTo: data.assignedToId ? { connect: { id: Number(data.assignedToId) } } : undefined,
+          isCompleted:data.isCompleted
         },
       }).then(async (product) => {
         return await this.prisma.product.update({
@@ -143,6 +144,7 @@ export class ProductService {
           image: data.image || product.image,
           date: data.date || product.date,
           isFinished: data.isFinished !== undefined ? data.isFinished : product.isFinished,
+          isCompleted:data.isCompleted,
           category: data.categoryId
             ? { connect: { id: Number(data.categoryId) } }
             : data.categoryId === null
