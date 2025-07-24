@@ -47,12 +47,12 @@ export class OrderController {
     return this.orderService.update(+id, updateOrderDto);
   }
 
-  @Patch('item/:itemId/status')
+@Patch('item/:itemId/status')
   updateOrderItemStatus(
     @Param('itemId') itemId: string,
-    @Body() body: { status: OrderItemStatus },
+    @Body() body: { status?: OrderItemStatus; count?: number },
   ) {
-    return this.orderService.updateOrderItemStatus(+itemId, body.status);
+    return this.orderService.updateOrderItemStatus(+itemId, body.status, body.count);
   }
 
   @Delete('orderItem/:id')

@@ -99,19 +99,28 @@ export class OrderGateway {
     }
   }
 
-  @SubscribeMessage('update_order_item_status')
-  async handleUpdateOrderItemStatus(@MessageBody() data: { itemId: number; status: OrderItemStatus }, @ConnectedSocket() client: Socket) {
-    try {
-      const orderItem = await this.orderService.updateOrderItemStatus(data.itemId, data.status);
+@SubscribeMessage('update_order_item_status')
+async handleUpdateOrderItemStatus(
+  @MessageBody() data: { itemId: number; status?: OrderItemStatus; count?: number },
+  @ConnectedSocket() client: Socket
+) {
+  try {
+    // MODIFIED: Pass both status and count to updateOrderItemStatus
+    const orderItem = await this.orderService.updateOrderItemStatus(data.itemId, data.status, data.count);
+    // MODIFIED: Check if the orderItem was deleted
+    if (orderItem.deleted) {
+      this.server.emit('orderItemDeleted', { id: data.itemId });
+    } else {
       this.server.emit('orderItemStatusUpdated', orderItem);
-      client.emit('update_order_item_status_response', { status: 'ok', orderItem });
-    } catch (error) {
-      client.emit('update_order_item_status_response', {
-        status: 'error trackbac',
-        message: error.message || 'Failed to update order item status',
-      });
     }
+    client.emit('update_order_item_status_response', { status: 'ok', orderItem });
+  } catch (error) {
+    client.emit('update_order_item_status_response', {
+      status: 'error',
+      message: error.message || 'Failed to update order item status',
+    });
   }
+}
 
   @SubscribeMessage('update_order_status')
   async handleUpdateOrderStatus(@MessageBody() data: { orderId: number; status: OrderStatus }, @ConnectedSocket() client: Socket) {

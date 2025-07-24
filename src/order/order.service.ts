@@ -275,36 +275,125 @@ export class OrderService {
     return updatedOrder;
   }
 
-  async updateOrderItemStatus(orderItemId: number, status: OrderItemStatus) {
-    const orderItem = await this.prisma.orderItem.findUnique({
-      where: { id: orderItemId },
-      include: {
-        order: true,
-        product: { include: { assignedTo: true } },
-      },
-    });
+async updateOrderItemStatus(orderItemId: number, status?: OrderItemStatus, count?: number) {
+  const orderItem = await this.prisma.orderItem.findUnique({
+    where: { id: orderItemId },
+    include: {
+      order: true,
+      product: { include: { assignedTo: true } },
+    },
+  });
 
-    if (!orderItem) {
-      throw new NotFoundException('Order item not found');
-    }
-
-    const updatedOrderItem = await this.prisma.orderItem.update({
-      where: { id: orderItemId },
-      data: {
-        status,
-        preparedAt: status === OrderItemStatus.READY ? new Date() : null,
-      },
-      include: {
-        product: { include: { assignedTo: true } },
-        order: true,
-      },
-    });
-
-    this.orderGateway.notifyOrderItemStatusUpdated(updatedOrderItem);
-    await this.updateOrderStatusIfAllItemsReady(orderItem.orderId);
-    return updatedOrderItem;
+  if (!orderItem) {
+    throw new NotFoundException('Order item not found');
   }
 
+  // NEW: Handle count changes
+  let updatedOrderItem;
+  let newOrderItem;
+  if (count !== undefined && count >= 0) {
+    if (count > orderItem.count) {
+      // NEW: Create a new orderItem for the additional count
+      const additionalCount = count - orderItem.count;
+      newOrderItem = await this.prisma.orderItem.create({
+        data: {
+          order: { connect: { id: orderItem.orderId } },
+          product: { connect: { id: orderItem.productId } },
+          count: additionalCount,
+          description: orderItem.description || null,
+          status: OrderItemStatus.PENDING, // NEW: Set status to PENDING
+        },
+        include: {
+          product: { include: { assignedTo: true } },
+          order: true,
+        },
+      });
+      // NEW: Notify about the new orderItem
+      if (newOrderItem.product?.assignedTo) {
+        this.orderGateway.notifyOrderItemAssigned(newOrderItem);
+      }
+      this.orderGateway.notifyOrderItemStatusUpdated(newOrderItem); // NEW: Emit new orderItem
+    } else if (count === 0) {
+      // NEW: Delete the orderItem if count is 0
+      await this.prisma.orderItem.delete({
+        where: { id: orderItemId },
+      });
+      this.orderGateway.notifyOrderItemDeleted(orderItemId);
+    } else {
+      // MODIFIED: Update existing orderItem if count is decreased or unchanged
+      const data: any = {};
+      if (status) {
+        data.status = status;
+        if (status === OrderItemStatus.READY) {
+          data.preparedAt = new Date();
+        } else {
+          data.preparedAt = null;
+        }
+      }
+      data.count = count;
+      updatedOrderItem = await this.prisma.orderItem.update({
+        where: { id: orderItemId },
+        data,
+        include: {
+          product: { include: { assignedTo: true } },
+          order: true,
+        },
+      });
+      this.orderGateway.notifyOrderItemStatusUpdated(updatedOrderItem);
+    }
+  } else {
+    // MODIFIED: Handle status-only updates (no count change)
+    const data: any = {};
+    if (status) {
+      data.status = status;
+      if (status === OrderItemStatus.READY) {
+        data.preparedAt = new Date();
+      } else {
+        data.preparedAt = null;
+      }
+    }
+    updatedOrderItem = await this.prisma.orderItem.update({
+      where: { id: orderItemId },
+      data,
+      include: {
+        product: { include: { assignedTo: true } },
+        order: true,
+      },
+    });
+    this.orderGateway.notifyOrderItemStatusUpdated(updatedOrderItem);
+  }
+
+  // MODIFIED: Recalculate totalPrice for the order
+  const orderItems = await this.prisma.orderItem.findMany({
+    where: { orderId: orderItem.orderId },
+    include: { product: true },
+  });
+
+  const totalPrice = orderItems.reduce((sum, item) => {
+    return sum + Number(item.product?.price || 0) * (item.count || 0);
+  }, 0);
+
+  const updatedOrder = await this.prisma.order.update({
+    where: { id: orderItem.orderId },
+    data: { totalPrice },
+    include: {
+      user: true,
+      table: true,
+      orderItems: {
+        include: {
+          product: { include: { assignedTo: true } },
+        },
+      },
+    },
+  });
+
+  // MODIFIED: Notify about the updated order
+  this.orderGateway.notifyOrderUpdated(updatedOrder);
+  await this.updateOrderStatusIfAllItemsReady(orderItem.orderId);
+
+  // NEW: Return the new orderItem if created, otherwise return the updated orderItem or null if deleted
+  return newOrderItem || updatedOrderItem || { id: orderItemId, deleted: true };
+}
   private async updateOrderStatusIfAllItemsReady(orderId: number) {
     const orderItems = await this.prisma.orderItem.findMany({
       where: { orderId },

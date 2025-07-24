@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "uploads",
+			"path": "../../uploads"
+		},
+		{
+			"name": "RestoranProject",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
